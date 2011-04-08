@@ -1,0 +1,12 @@
+No changes in component "EG_Eclipse" since last baseline; no baseline created.
+Created baseline "basename.1000" in component "build_DeskCore".
+Created baseline "basename.2000" in component "Desk_Core".
+No changes in component "Desk_Shared" since last baseline; no baseline created.
+Begin incrementally labeling baseline "deskCore_4.3-136_201010141619.1632".
+Done incrementally labeling baseline "deskCore_4.3-136_201010141619.1632".
+Begin fully labeling baseline "deskCore_4.3-136_201010141619.1632".
+Done fully labeling baseline "deskCore_4.3-136_201010141619.1632".
+Begin incrementally labeling baseline "deskCore_4.3-136_201010141619.1632".
+Done incrementally labeling baseline "deskCore_4.3-136_201010141619.1632".
+Begin fully labeling baseline "deskCore_4.3-136_201010141619.1632".
+Done fully labeling baseline "deskCore_4.3-136_201010141619.1632".

@@ -1,0 +1,9 @@
+"20101018.115752" "user" "/extended/view/path/vobs/vob/component/file1" "/main/branch/18" "create version" "checkin" "deliver.devbranch.20101018.120019" 
+
+"20101018.115752" "user" "/extended/view/path/vobs/vob/component/path/file2" "/main/branch/7" "create version" "checkin" "deliver.devbranch.20101018.120019" 
+
+"20101018.115752" "user" "/extended/view/path/vobs/vob/component/file3" "/main/branch/9" "create version" "checkin" "deliver.devbranch.20101018.120019" 
+
+"20101018.115752" "user" "/extended/view/path/vobs/vob/component/path/path/file4" "/main/branch/12" "create version" "checkin" "deliver.devbranch.20101018.120019" 
+
+"20101018.115752" "user" "/extended/view/path/vobs/vob/component/path/file5" "/main/branch/3" "create version" "checkin" "deliver.devbranch.20101018.120019" 

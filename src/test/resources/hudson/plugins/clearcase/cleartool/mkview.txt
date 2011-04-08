@@ -1,0 +1,5 @@
+Created view.
+Host-local path: TC2:D:\stgloc\ORCHESTRA\tcinteg\TC2_CHARM_OnJira_hudson.vws
+Global path:     \\TC2\stgloc\ORCHESTRA\tcinteg\TC2_CHARM_OnJira_hudson.vws
+Created snapshot view directory "TC2_CHARM_OnJira_hudson".
+Attached view to stream "P_CHARM_OnJira_JIRA_4.1_int".

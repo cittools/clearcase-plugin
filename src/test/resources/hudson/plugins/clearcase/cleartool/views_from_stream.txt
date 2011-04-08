@@ -1,0 +1,3 @@
+cleartool: Error: No tag in region for view "b2ae94d0.db29458d.b7c2.1a:01:25:3d:e1:06".
+cleartool: Error: No tag in region for view "269e99a6.fa3d11de.930d.00:01:83:dd:5c:77".
+view1 view2 view3 view4 view5

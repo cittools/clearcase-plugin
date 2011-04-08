@@ -1,0 +1,5 @@
+snapviews
+snapviews2
+snap_views
+viewstore
+vobstore

@@ -1,0 +1,96 @@
+<!--
+
+    The MIT License
+
+    Copyright (c) 2007-2009, Sun Microsystems, Inc., Kohsuke Kawaguchi, Erik Ramfelt,
+                             Henrik Lynggaard, Peter Liljenberg, Andrew Bayer
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+    THE SOFTWARE.
+
+-->
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler"
+	xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson"
+	xmlns:f="/lib/form">
+
+    <f:entry title="${%useDynamicView}" field="useDynamicView" >
+        <f:checkbox default="false"/>
+    </f:entry>
+    
+	<f:entry title="${%useUpdate}" field="useUpdate" >
+		<f:checkbox default="true"/>
+		${%useUpdateComment}
+	</f:entry>
+    
+  	<f:entry title="${%viewName}" field="viewName" >
+ 		<f:textbox default="${descriptor.getDefaultViewPattern()}" />
+    </f:entry>
+    
+	<f:entry title="${%streamName}" field="stream" >
+        <f:textbox />
+	</f:entry>
+    
+	<f:entry title="${%loadRules}" field="loadRules" >
+		<f:textarea />
+	</f:entry>
+
+	<f:advanced>
+	
+	    <f:entry title="${%clearcaseConfig}" name="clearcaseConfig" field="clearcaseConfig" >
+	        <select class="setting-input" name="clearcaseConfig" >
+	            <option>(Default)</option>
+	            <j:forEach var="conf" items="${descriptor.configurations}">
+	                <f:option selected="${conf.name==instance.clearcaseConfig}" 
+	                          value="${conf.name}">${conf.name}</f:option>
+	            </j:forEach>
+	        </select>
+	    </f:entry>
+    
+        <f:entry title="${%excludedRegions}" field="excludedRegions" >
+            <f:textarea />
+        </f:entry>
+        
+		<f:entry title="${%mkviewOptionalParam}" field="mkviewOptionalParam" >
+            <f:expandableTextbox />
+		</f:entry>
+		
+		<f:entry title="${%multiSitePollBuffer}" field="multiSitePollBuffer" >
+		    <f:textbox default="0" />
+		</f:entry>
+
+		<f:entry title="${%filteringOutDestroySubBranchEvent}" 
+		         field="filteringOutDestroySubBranchEvent" >
+		    <f:checkbox default="true" />
+		    ${%filteringOutDestroySubBranchEventComment}
+	    </f:entry>
+	    
+		<f:entry title="${%viewDrive}" field="viewDrive" >
+		    <f:textbox default="${descriptor.getDefaultViewRoot()}" />
+		</f:entry>
+		
+		<f:entry title="${%doNotUpdateConfigSpec}" field="doNotUpdateConfigSpec" >
+	        <f:checkbox default="false"/>
+	        ${%doNotUpdateConfigSpecComment}
+	    </f:entry>
+	    
+	    <f:entry title="${%customWorkspace}" field="customWorkspace" >
+            <f:textbox />
+        </f:entry>
+		
+	</f:advanced>
+</j:jelly>

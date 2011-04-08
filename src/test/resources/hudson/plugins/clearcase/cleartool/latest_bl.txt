@@ -1,0 +1,1 @@
+,20101030.174547;baseline:bl5@/vobtag,20101015.174539;baseline:bl2@/vobtag,20101020.174539;baseline:bl4@/vobtag,20090217.174539;baseline:bl1@/vobtag,20101018.174530;baseline:bl3@/vobtag

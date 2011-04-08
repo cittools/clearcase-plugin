@@ -1,0 +1,15 @@
+Created baseline "basename.1000" in component "comp1".
+Created baseline "basename.2000" in component "comp4".
+Created baseline "basename.3000" in component "comp6".
+Begin incrementally labeling baseline "test_bl_2010-10-28_17-43-09_hudson.8447".
+Done incrementally labeling baseline "test_bl_2010-10-28_17-43-09_hudson.8447".
+Begin incrementally labeling baseline "test_bl_2010-10-28_17-43-09_hudson.8450".
+Done incrementally labeling baseline "test_bl_2010-10-28_17-43-09_hudson.8450".
+Begin incrementally labeling baseline "test_bl_2010-10-28_17-43-09_hudson.7700".
+Done incrementally labeling baseline "test_bl_2010-10-28_17-43-09_hudson.7700".
+Begin fully labeling baseline "test_bl_2010-10-28_17-43-09_hudson.8447".
+Done fully labeling baseline "test_bl_2010-10-28_17-43-09_hudson.8447".
+Begin fully labeling baseline "test_bl_2010-10-28_17-43-09_hudson.8450".
+Done fully labeling baseline "test_bl_2010-10-28_17-43-09_hudson.8450".
+Begin fully labeling baseline "test_bl_2010-10-28_17-43-09_hudson.7700".
+Done fully labeling baseline "test_bl_2010-10-28_17-43-09_hudson.7700".

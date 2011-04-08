@@ -1,0 +1,17 @@
+Tag: test_base_cc_dyn
+  Global path: /cc_stg/views/test_base_cc_dyn.vws
+  Server host: localhost
+  Region: linux
+  Active: YES
+  View tag uuid:4edf1975.39cb11e0.8345.00:50:56:92:50:62
+View on host: localhost
+View server access path: /cc_stg/views/test_base_cc_dyn.vws
+View uuid: 4edf1975.39cb11e0.8345.00:50:56:92:50:62
+View owner: user
+
+Created 2011-02-16T13:43:10+01:00 by orchestra.ccuser@localhost
+Last modified 2011-02-16T13:44:01+01:00 by orchestra.ccuser@VMO9
+Last accessed 2011-02-16T13:44:02+01:00 by orchestra.ccuser@VMO9
+Owner: orchestra        : rwx (all)
+Group: ccuser           : r-x (read)
+Other:                  : r-x (read)

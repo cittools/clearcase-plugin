@@ -1,0 +1,5 @@
+D:\cc\src\main\java\hudson\plugins\clearcase\checkout\DynamicCheckoutAction.java
+D:\cc\src\main\java\hudson\plugins\clearcase\ClearCaseUcmSCM.java
+D:\cc\src\main\java\hudson\plugins\clearcase\tagging\UcmBaseline.java
+D:\cc\src\main\java\hudson\plugins\clearcase\util\Tools.java
+D:\cc\src\test\java\hudson\plugins\clearcase\cleartool\ClearToolTest.java

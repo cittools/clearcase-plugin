@@ -1,0 +1,44 @@
+<!--
+
+    The MIT License
+
+    Copyright (c) 2007-2009, Sun Microsystems, Inc., Kohsuke Kawaguchi, Erik Ramfelt,
+                             Henrik Lynggaard, Peter Liljenberg, Andrew Bayer
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+    THE SOFTWARE.
+
+-->
+<div>
+  <p>
+	If you set this field, the value of the variable <tt>${WORKSPACE}</tt> will be changed 
+	with the one you provided, with all that that implies for build steps and/or other plugins
+	that use this variable. Please note that Hudson's built-in option: <b>custom workspace</b> 
+    will also be overriden.
+  </p>
+  <p>
+  	For implementation reasons, the variable will only be changed <b>AFTER</b> the view has been
+  	created or started. Therefore, you can use a path that points inside a dynamic view without
+  	worrying if the view is already mounted or not.
+  </p>
+  <p>
+  	You can of course use environment variables in this field such as <tt>${CLEARCASE_VIEWPATH}</tt>.
+    If you give a relative path, it will be resolved against the path of the view. 
+    So <tt>vobs/vob1/component</tt> is equivalent to <tt>${CLEARCASE_VIEWPATH}/vobs/vob1/component</tt>.  
+  </p>
+</div>

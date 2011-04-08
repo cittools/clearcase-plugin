@@ -1,0 +1,42 @@
+Processing dir "ORCHESTRA\build_Product\withgradle".
+Processing dir "ORCHESTRA\build_Product\withgradle\product_resources".
+.
+Processing dir "ORCHESTRA\build_Product\withgradle\product_resources\links".
+.............
+End dir "ORCHESTRA\build_Product\withgradle\product_resources\links".
+.
+Processing dir "ORCHESTRA\build_Product\withgradle\product_resources\product".
+Processing dir "ORCHESTRA\build_Product\withgradle\product_resources\product\feature_product".
+..
+Loading "ORCHESTRA\build_Product\withgradle\product_resources\product\feature_product\feature.xml" (33236 bytes).
+Processing dir "ORCHESTRA\build_Product\withgradle\product_resources\product\feature_product\keystore".
+...
+End dir "ORCHESTRA\build_Product\withgradle\product_resources\product\feature_product\keystore".
+.
+Processing dir "ORCHESTRA\build_Product\withgradle\product_resources\product\feature_product\launch icons".
+......
+End dir "ORCHESTRA\build_Product\withgradle\product_resources\product\feature_product\launch icons".
+...
+Processing dir "ORCHESTRA\build_Product\withgradle\product_resources\product\feature_product\server".
+...
+End dir "ORCHESTRA\build_Product\withgradle\product_resources\product\feature_product\server".
+.
+Processing dir "ORCHESTRA\build_Product\withgradle\product_resources\product\feature_product\startup".
+..
+End dir "ORCHESTRA\build_Product\withgradle\product_resources\product\feature_product\startup".
+.
+End dir "ORCHESTRA\build_Product\withgradle\product_resources\product\feature_product".
+.
+End dir "ORCHESTRA\build_Product\withgradle\product_resources\product".
+.
+End dir "ORCHESTRA\build_Product\withgradle\product_resources".
+.
+End dir "ORCHESTRA\build_Product\withgradle".
+.
+Done loading "\ORCHESTRA\build_Product\withgradle" (42 objects, copied 32 KB).
+Processing dir "ORCHESTRA\build_Product\scripts".
+.
+End dir "ORCHESTRA\build_Product\scripts".
+.
+Done loading "\ORCHESTRA\build_Product\scripts" (2 objects, copied 0 KB).
+Log has been written to "D:\TC\HudsonHome\jobs\Desk-4.4\workspace\TC1_Desk-4.4_hudson\update.2010-10-28T165929+0200.updt".

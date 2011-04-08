@@ -1,0 +1,2 @@
+cleartool: Error: Activity "activity" is not a deliver or rebase integration activity.
+"activity headline" "stream" "user" "" "" 

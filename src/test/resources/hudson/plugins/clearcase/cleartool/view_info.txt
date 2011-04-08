@@ -1,0 +1,19 @@
+Tag: view_tag
+  Global path: /storage/views/view_tag.vws
+  Server host: registry_server
+  Region: unix
+  Active: NO
+  View tag uuid:86fa4721.9e1a11df.9917.00:01:83:dd:5c:77
+View on host: view_host
+View server access path: /storage/views/view_tag.vws
+View uuid: 86fa4721.9e1a11df.9917.00:01:83:dd:5c:77
+View attributes: ucmview
+View owner: user
+
+Created 2010-08-02T11:37:14+02:00 by user.group@registry_server
+Last modified 2010-08-02T11:37:14+02:00 by user.group@registry_server
+Last accessed 2010-08-02T11:37:14+02:00 by user.group@registry_server
+Owner: user         : rwx (all)
+Group: group            : rwx (all)
+Other:                  : r-x (read)
+Additional groups: group_2 group_3

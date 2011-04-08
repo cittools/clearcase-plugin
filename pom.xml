@@ -1,0 +1,102 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>org.jvnet.hudson.plugins</groupId>
+		<artifactId>plugin</artifactId>
+		<version>1.355</version>
+	</parent>
+
+	<artifactId>clearcase-thales</artifactId>
+	<packaging>hpi</packaging>
+	<name>Hudson ClearCase Plug-in (THALES internal release)</name>
+	<version>2.4.4</version>
+	<url>http://wiki.hudson-ci.org/display/HUDSON/ClearCase+Plugin</url>
+	<licenses>
+		<license>
+			<name>MIT license</name>
+			<comments>All source code is under the MIT license.</comments>
+		</license>
+	</licenses>
+
+	<developers>
+		<developer>
+			<id>rjarry</id>
+			<name>Robin Jarry</name>
+			<email>robin.jarry@external.thalesgroup.com</email>
+			<timezone>+1</timezone>
+			<roles>
+				<role>Project Developper</role>
+			</roles>
+		</developer>
+	</developers>
+
+    <dependencies>
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<version>4.8.1</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.mockito</groupId>
+			<artifactId>mockito-all</artifactId>
+			<version>1.8.5</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.powermock</groupId>
+			<artifactId>powermock-module-junit4</artifactId>
+			<version>1.4.6</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.powermock</groupId>
+			<artifactId>powermock-api-mockito</artifactId>
+			<version>1.4.6</version>
+			<scope>test</scope>
+        </dependency>
+	</dependencies>
+
+
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.jvnet.hudson.tools</groupId>
+				<artifactId>maven-hpi-plugin</artifactId>
+				<version>1.43</version>
+				<extensions>true</extensions>
+				<configuration>
+					<compatibleSinceVersion>1.0</compatibleSinceVersion>
+				</configuration>
+			</plugin>
+		</plugins>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <artifactId>maven-enforcer-plugin</artifactId>
+                    <version>1.0</version>
+                </plugin>
+                <plugin>
+                    <artifactId>maven-eclipse-plugin</artifactId>
+                    <version>2.5.1</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>sonar-maven-plugin</artifactId>
+                    <version>1.0-beta-2</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+	</build>
+
+	<distributionManagement>
+		<repository>
+			<id>orchestra-java</id>
+			<name>Orchestra Java Deployment</name>
+			<url>http://repo.orchestra.ors.services.thales/content/repositories/orchestra-java</url>
+		</repository>
+	</distributionManagement>
+
+</project>

@@ -1,0 +1,8 @@
+No changes in component "RJA_comp1" since last baseline; no baseline created.
+No changes in component "RJA_comp2" since last baseline; no baseline created.
+No changes in component "RJA_comp3" since last baseline; no baseline created.
+Created baseline "basename" in component "composite".
+Begin fully labeling baseline "test_clearcase_2010-09-06_14-44-08_hudson.2137".
+Done fully labeling baseline "test_clearcase_2010-09-06_14-44-08_hudson.2137".
+Begin fully labeling baseline "P_test_composite_15_10_2010.5479".
+Done fully labeling baseline "P_test_composite_15_10_2010.5479".

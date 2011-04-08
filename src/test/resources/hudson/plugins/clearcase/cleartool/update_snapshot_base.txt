@@ -1,0 +1,72 @@
+Making dir "ORCHESTRA\CodeBld_Slcnt".
+Processing dir "ORCHESTRA\CodeBld_Slcnt".
+Loading "ORCHESTRA\CodeBld_Slcnt\call_slcnt.pl" (9114 bytes).
+Making dir "ORCHESTRA\CodeBld_Slcnt\examples".
+Processing dir "ORCHESTRA\CodeBld_Slcnt\examples".
+Loading "ORCHESTRA\CodeBld_Slcnt\examples\A_test.pl" (1934 bytes).
+Loading "ORCHESTRA\CodeBld_Slcnt\examples\DOMUtils.java" (10753 bytes).
+Loading "ORCHESTRA\CodeBld_Slcnt\examples\egalis.c" (36224 bytes).
+Loading "ORCHESTRA\CodeBld_Slcnt\examples\exemp.asm" (4026 bytes).
+Loading "ORCHESTRA\CodeBld_Slcnt\examples\fonction.c" (19395 bytes).
+Loading "ORCHESTRA\CodeBld_Slcnt\examples\isr_rsbch.asm" (6837 bytes).
+Loading "ORCHESTRA\CodeBld_Slcnt\examples\lim.c" (176 bytes).
+Loading "ORCHESTRA\CodeBld_Slcnt\examples\liste.lst" (350 bytes).
+Making dir "ORCHESTRA\CodeBld_Slcnt\examples\nest".
+Processing dir "ORCHESTRA\CodeBld_Slcnt\examples\nest".
+Making dir "ORCHESTRA\CodeBld_Slcnt\examples\nest\nest".
+Processing dir "ORCHESTRA\CodeBld_Slcnt\examples\nest\nest".
+Loading "ORCHESTRA\CodeBld_Slcnt\examples\nest\nest\lim11.c" (176 bytes).
+End dir "ORCHESTRA\CodeBld_Slcnt\examples\nest\nest".
+End dir "ORCHESTRA\CodeBld_Slcnt\examples\nest".
+Making dir "ORCHESTRA\CodeBld_Slcnt\examples\nest space".
+Processing dir "ORCHESTRA\CodeBld_Slcnt\examples\nest space".
+Loading "ORCHESTRA\CodeBld_Slcnt\examples\nest space\a slcnt.c" (104226 bytes).
+End dir "ORCHESTRA\CodeBld_Slcnt\examples\nest space".
+Loading "ORCHESTRA\CodeBld_Slcnt\examples\res_slcnt.ref" (3386 bytes).
+Loading "ORCHESTRA\CodeBld_Slcnt\examples\rt_hd_dsp.asm" (5841 bytes).
+Loading "ORCHESTRA\CodeBld_Slcnt\examples\rt_hd_rsbch.asm" (5731 bytes).
+Loading "ORCHESTRA\CodeBld_Slcnt\examples\Program.cs" (9630 bytes).
+Loading "ORCHESTRA\CodeBld_Slcnt\examples\databasedump.sql" (66673 bytes).
+Loading "ORCHESTRA\CodeBld_Slcnt\examples\jquery.js" (160712 bytes).
+Loading "ORCHESTRA\CodeBld_Slcnt\examples\query.py" (55306 bytes).
+Loading "ORCHESTRA\CodeBld_Slcnt\examples\code_with_huge_words.c" (2523 bytes).
+Making dir "ORCHESTRA\CodeBld_Slcnt\examples\dash-directory".
+Processing dir "ORCHESTRA\CodeBld_Slcnt\examples\dash-directory".
+Loading "ORCHESTRA\CodeBld_Slcnt\examples\dash-directory\fonction-dash.c" (19395 bytes).
+End dir "ORCHESTRA\CodeBld_Slcnt\examples\dash-directory".
+End dir "ORCHESTRA\CodeBld_Slcnt\examples".
+Loading "ORCHESTRA\CodeBld_Slcnt\Makefile" (2417 bytes).
+Making dir "ORCHESTRA\CodeBld_Slcnt\src".
+Processing dir "ORCHESTRA\CodeBld_Slcnt\src".
+Loading "ORCHESTRA\CodeBld_Slcnt\src\slcnt-constants.h" (901 bytes).
+Loading "ORCHESTRA\CodeBld_Slcnt\src\slcnt-diff.c" (11641 bytes).
+Loading "ORCHESTRA\CodeBld_Slcnt\src\slcnt-diff.h" (632 bytes).
+Loading "ORCHESTRA\CodeBld_Slcnt\src\slcnt-languages.h" (7598 bytes).
+Loading "ORCHESTRA\CodeBld_Slcnt\src\slcnt-macros.h" (2073 bytes).
+Loading "ORCHESTRA\CodeBld_Slcnt\src\slcnt-output.c" (14270 bytes).
+Loading "ORCHESTRA\CodeBld_Slcnt\src\slcnt-output.h" (3253 bytes).
+Loading "ORCHESTRA\CodeBld_Slcnt\src\slcnt-typedefs.h" (6447 bytes).
+Loading "ORCHESTRA\CodeBld_Slcnt\src\slcnt.c" (51211 bytes).
+Loading "ORCHESTRA\CodeBld_Slcnt\src\slcnt.h" (3270 bytes).
+Loading "ORCHESTRA\CodeBld_Slcnt\src\slcnt-args.c" (18706 bytes).
+Loading "ORCHESTRA\CodeBld_Slcnt\src\slcnt-args.h" (272 bytes).
+Loading "ORCHESTRA\CodeBld_Slcnt\src\slcnt.usage" (2081 bytes).
+Loading "ORCHESTRA\CodeBld_Slcnt\src\slcnt.xsd" (4589 bytes).
+End dir "ORCHESTRA\CodeBld_Slcnt\src".
+Making dir "ORCHESTRA\CodeBld_Slcnt\doc".
+Processing dir "ORCHESTRA\CodeBld_Slcnt\doc".
+Loading "ORCHESTRA\CodeBld_Slcnt\doc\README-windows.rst" (3620 bytes).
+Loading "ORCHESTRA\CodeBld_Slcnt\doc\README.rst" (3358 bytes).
+Loading "ORCHESTRA\CodeBld_Slcnt\doc\slcnt_man.rst" (12664 bytes).
+Loading "ORCHESTRA\CodeBld_Slcnt\doc\slcnt_man_fr.txt.obsolete" (15008 bytes).
+End dir "ORCHESTRA\CodeBld_Slcnt\doc".
+Loading "ORCHESTRA\CodeBld_Slcnt\gen_doc.cmd" (713 bytes).
+Loading "ORCHESTRA\CodeBld_Slcnt\make.cmd" (1704 bytes).
+Making dir "ORCHESTRA\CodeBld_Slcnt\scripts".
+Processing dir "ORCHESTRA\CodeBld_Slcnt\scripts".
+Loading "ORCHESTRA\CodeBld_Slcnt\scripts\compile_resource.py" (2884 bytes).
+Loading "ORCHESTRA\CodeBld_Slcnt\scripts\zip.gradle" (2008 bytes).
+End dir "ORCHESTRA\CodeBld_Slcnt\scripts".
+End dir "ORCHESTRA\CodeBld_Slcnt".
+Done loading "\ORCHESTRA\CodeBld_Slcnt" (52 objects, copied 677 KB).
+Log has been written to "D:\cc\PB188043_test_base_view\update.2010-11-03T171417+0100.updt".

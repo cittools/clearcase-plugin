@@ -1,0 +1,94 @@
+<!--
+
+    The MIT License
+
+    Copyright (c) 2007-2009, Sun Microsystems, Inc., Kohsuke Kawaguchi, Erik Ramfelt,
+                             Henrik Lynggaard, Peter Liljenberg, Andrew Bayer
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+    THE SOFTWARE.
+
+-->
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
+	<f:section title="ClearCase">
+		<f:description>
+			<div align="right">
+				<a href="${rootURL}/scm/ClearCaseBaseSCM/version">${%checkCleartoolVersion}</a>
+  			</div>
+    	</f:description>
+    	
+        <f:block>
+        ${%defaultConfigs}<hr/>
+        </f:block>
+
+    	<f:entry title="${%cleartoolExe}" field="cleartoolExe" >
+	    	<f:textbox />
+	  	</f:entry>
+	  	
+	  	<f:entry title="${%stgloc}" field="stgloc" >
+	  	    <f:textbox />
+	  	</f:entry>
+
+		<f:entry title="${%changeLogMergeTimeWindow}" field="changeLogMergeTimeWindow" >
+			<f:textbox />
+		</f:entry>
+
+        <f:block>
+        ${%customConfigs}<hr/>
+        </f:block>
+
+        <f:entry description="List of ClearCase Configurations">
+            <f:repeatable var="conf" items="${descriptor.configurations}">
+                <table width="100%">
+        
+					<f:entry title="Name">
+					    <f:textbox name="cc.name" 
+					               value="${conf.name}" 
+					               checkUrl="'${rootURL}/scm/ClearCaseBaseSCM/checkName?value='+escape(this.value)" />
+					</f:entry>
+					
+					<f:entry title="${%cleartoolExe}">
+					    <f:textbox name="cc.cleartoolExe" 
+					               value="${conf.cleartoolExe}" 
+					               default="${descriptor.cleartoolExe}"
+					               checkUrl="'${rootURL}/scm/ClearCaseBaseSCM/checkCleartoolExe?value='+escape(this.value)" />
+					</f:entry>
+					
+					<f:entry title="${%stgloc}">
+					    <f:textbox name="cc.stgloc" 
+					               value="${conf.stgloc}" 
+					               default="${descriptor.stgloc}"
+					               checkUrl="'${rootURL}/scm/ClearCaseBaseSCM/checkStgloc?value='+escape(this.value)" />
+					</f:entry>
+					
+					<f:entry title="${%changeLogMergeTimeWindow}">
+					    <f:textbox name="cc.changeLogMergeTimeWindow" 
+					               value="${conf.changeLogMergeTimeWindow}" 
+					               default="${descriptor.changeLogMergeTimeWindow}" />
+					</f:entry>
+					
+					<f:entry title="">
+					    <div align="right">
+					        <f:repeatableDeleteButton />
+					    </div>
+					</f:entry>
+                </table>
+            </f:repeatable>
+        </f:entry>
+ 	</f:section>
+</j:jelly>
