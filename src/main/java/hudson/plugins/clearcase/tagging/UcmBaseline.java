@@ -396,7 +396,7 @@ public class UcmBaseline extends Notifier {
                 // get vob dependent promotion levels
                 ct.fetchPromotionLevels(stream.getPvob());
                 
-                if (build.getResult().equals(Result.SUCCESS)) {
+                if (build.getResult().equals(Result.SUCCESS) || build.getResult().equals(Result.UNSTABLE)) {
                     logger.log("Promoting baselines...");
                     
                     // On success, promote all the baselines that hudson created to "BUILT"
