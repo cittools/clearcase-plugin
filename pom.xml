@@ -11,7 +11,7 @@
     <artifactId>clearcase-thales</artifactId>
     <packaging>hpi</packaging>
     <name>Hudson ClearCase Plug-in</name>
-    <version>2.4.5-SNAPSHOT</version>
+    <version>2.4.5</version>
 
     <licenses>
         <license>
