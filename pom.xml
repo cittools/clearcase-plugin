@@ -1,77 +1,94 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
-	<modelVersion>4.0.0</modelVersion>
-	<parent>
-		<groupId>org.jvnet.hudson.plugins</groupId>
-		<artifactId>plugin</artifactId>
-		<version>1.355</version>
-	</parent>
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.jvnet.hudson.plugins</groupId>
+        <artifactId>plugin</artifactId>
+        <version>1.355</version>
+    </parent>
 
-	<artifactId>clearcase-thales</artifactId>
-	<packaging>hpi</packaging>
-	<name>Hudson ClearCase Plug-in (THALES internal release)</name>
-	<version>2.4.4</version>
-	<url>http://wiki.hudson-ci.org/display/HUDSON/ClearCase+Plugin</url>
-	<licenses>
-		<license>
-			<name>MIT license</name>
-			<comments>All source code is under the MIT license.</comments>
-		</license>
-	</licenses>
+    <groupId>com.thalesgroup.hudson.plugins</groupId>
+    <artifactId>clearcase-thales</artifactId>
+    <packaging>hpi</packaging>
+    <name>Hudson ClearCase Plug-in</name>
+    <version>2.4.5-SNAPSHOT</version>
 
-	<developers>
-		<developer>
-			<id>rjarry</id>
-			<name>Robin Jarry</name>
-			<email>robin.jarry@external.thalesgroup.com</email>
-			<timezone>+1</timezone>
-			<roles>
-				<role>Project Developper</role>
-			</roles>
-		</developer>
-	</developers>
+    <licenses>
+        <license>
+            <name>MIT license</name>
+            <comments>All source code is under the MIT license.</comments>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>rjarry</id>
+            <name>Robin Jarry</name>
+            <email>robin.jarry@external.thalesgroup.com</email>
+            <timezone>+1</timezone>
+            <roles>
+                <role>Project Developper</role>
+            </roles>
+        </developer>
+    </developers>
+
+    <contributors>
+        <contributor>
+            <name>Gregory Boissinot</name>
+            <email>gregory.boissinot@external.thalesgroup.com</email>
+            <timezone>+1</timezone>
+            <roles>
+                <role>Project Developer</role>
+            </roles>
+        </contributor>
+    </contributors>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.source>1.6</maven.compiler.source>
+        <maven.compiler.target>1.6</maven.compiler.target>
+    </properties>
 
     <dependencies>
-		<dependency>
-			<groupId>junit</groupId>
-			<artifactId>junit</artifactId>
-			<version>4.8.1</version>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.mockito</groupId>
-			<artifactId>mockito-all</artifactId>
-			<version>1.8.5</version>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.powermock</groupId>
-			<artifactId>powermock-module-junit4</artifactId>
-			<version>1.4.6</version>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.powermock</groupId>
-			<artifactId>powermock-api-mockito</artifactId>
-			<version>1.4.6</version>
-			<scope>test</scope>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.8.1</version>
+            <scope>test</scope>
         </dependency>
-	</dependencies>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-all</artifactId>
+            <version>1.8.5</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.powermock</groupId>
+            <artifactId>powermock-module-junit4</artifactId>
+            <version>1.4.6</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.powermock</groupId>
+            <artifactId>powermock-api-mockito</artifactId>
+            <version>1.4.6</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
 
 
-
-	<build>
-		<plugins>
-			<plugin>
-				<groupId>org.jvnet.hudson.tools</groupId>
-				<artifactId>maven-hpi-plugin</artifactId>
-				<version>1.43</version>
-				<extensions>true</extensions>
-				<configuration>
-					<compatibleSinceVersion>1.0</compatibleSinceVersion>
-				</configuration>
-			</plugin>
-		</plugins>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.jvnet.hudson.tools</groupId>
+                <artifactId>maven-hpi-plugin</artifactId>
+                <version>1.43</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <compatibleSinceVersion>1.0</compatibleSinceVersion>
+                </configuration>
+            </plugin>
+        </plugins>
         <pluginManagement>
             <plugins>
                 <plugin>
@@ -89,14 +106,19 @@
                 </plugin>
             </plugins>
         </pluginManagement>
-	</build>
+    </build>
 
-	<distributionManagement>
-		<repository>
-			<id>orchestra-java</id>
-			<name>Orchestra Java Deployment</name>
-			<url>http://repo.orchestra.ors.services.thales/content/repositories/orchestra-java</url>
-		</repository>
-	</distributionManagement>
+    <distributionManagement>
+        <repository>
+            <id>orchestra-java</id>
+            <name>Orchestra Java Deployment</name>
+            <url>http://repo.orchestra.ors.services.thales/content/repositories/orchestra-java</url>
+        </repository>
+    </distributionManagement>
+
+    <scm>
+        <connection>scm:git:git://github.com:cittools/clearcase-plugin.git</connection>
+        <developerConnection>scm:git:git@github.com:cittools/clearcase-plugin.git</developerConnection>
+    </scm>
 
 </project>
