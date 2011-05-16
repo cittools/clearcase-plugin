@@ -54,7 +54,7 @@ public class UcmChangeLogParser extends ChangeLogParser {
      * @return the change log set
      */
     @Override
-    public UcmChangeLogSet parse(@SuppressWarnings("unchecked") AbstractBuild build, File changeLogFile) 
+    public UcmChangeLogSet parse(@SuppressWarnings("rawtypes") AbstractBuild build, File changeLogFile) 
             throws IOException, SAXException 
     {
         FileInputStream fileInputStream = new FileInputStream(changeLogFile);

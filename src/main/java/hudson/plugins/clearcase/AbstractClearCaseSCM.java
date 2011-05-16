@@ -35,6 +35,7 @@ import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
 import hudson.model.BuildListener;
 import hudson.model.Computer;
+import hudson.model.Executor;
 import hudson.model.FreeStyleProject;
 import hudson.model.Node;
 import hudson.model.Result;
@@ -48,7 +49,6 @@ import hudson.plugins.clearcase.cleartool.CTLauncher;
 import hudson.plugins.clearcase.cleartool.ClearTool;
 import hudson.plugins.clearcase.cleartool.ClearToolDynamic;
 import hudson.plugins.clearcase.cleartool.ClearToolSnapshot;
-import hudson.plugins.clearcase.cleartool.LauncherWrapper;
 import hudson.plugins.clearcase.history.Filter;
 import hudson.plugins.clearcase.history.HistoryAction;
 import hudson.plugins.clearcase.history.Filter.DefaultFilter;
@@ -167,14 +167,25 @@ public abstract class AbstractClearCaseSCM extends SCM {
      *******************************/
     
     /** override method {@link hudson.scm.SCM#checkout()} */
-    
-	@Override
-    public boolean checkout(@SuppressWarnings("unchecked") AbstractBuild build, 
-    						Launcher launcher, FilePath workspace,
-                            BuildListener listener, File changelogFile) 
-                            throws IOException, InterruptedException 
+    @Override
+    public boolean checkout(@SuppressWarnings("rawtypes") AbstractBuild build, Launcher l,
+            FilePath workspace, BuildListener listener, File changelogFile) throws IOException,
+            InterruptedException
     {
         try {
+            /* In this plugin, the commands are displayed in a separate console "cleartool output"
+             * because cleartool gets sometimes very verbose and it pollutes the build log.
+             * 
+             * By default, Hudson prints every command invoked in the console no matter 
+             * what the user wants. This is done through the getListener().getLogger().printLn() 
+             * method from the Launcher class. 
+             * 
+             * As there is no way to modify this behaviour, I had to create a new launcher 
+             * with a NULL TaskListener so that when Hudson prints something, it goes to 
+             * the trash instead of poping in the middle of the build log */
+            Launcher launcher = Executor.currentExecutor().getOwner().getNode().createLauncher(
+                    TaskListener.NULL);
+            
             File ctLogFile = ClearToolLogFile.getCleartoolLogFile(build);
             ClearCaseLogger logger = new ClearCaseLogger(listener, ctLogFile);
             
@@ -205,8 +216,8 @@ public abstract class AbstractClearCaseSCM extends SCM {
             View view = getView();
             view.setViewPath(getExtendedViewPath(workspace));
             
-            ClearTool cleartool = createClearTool(config.getCleartoolExe(), listener, workspace, 
-                    build.getBuiltOn().getRootPath(), launcher, env, ctLogFile);
+            ClearTool cleartool = createClearTool(config.getCleartoolExe(), workspace, build
+                    .getBuiltOn().getRootPath(), launcher, env, ctLogFile);
 
             CheckoutAction checkoutAction = createCheckoutAction(cleartool, logger, view, storageLocation);
             
@@ -399,7 +410,7 @@ public abstract class AbstractClearCaseSCM extends SCM {
                             EnvVars env = build.getEnvironment(listener);
                             ClearCaseConfiguration config = fetchClearCaseConfig(nod.getNodeName());
                             Launcher launch = nod.createLauncher(listener);
-                            ClearTool ct = createClearTool(config.getCleartoolExe(), listener, ws, 
+                            ClearTool ct = createClearTool(config.getCleartoolExe(), ws, 
                                     nod.getRootPath(), launch, env, null);
                             wipeoutWorkspace(ct, nod, ws);
                         } catch (Exception e) {
@@ -431,7 +442,7 @@ public abstract class AbstractClearCaseSCM extends SCM {
                     try {
                         ClearCaseConfiguration config = fetchClearCaseConfig(node.getNodeName());
                         Launcher launch = node.createLauncher(listener);
-                        ClearTool ct = createClearTool(config.getCleartoolExe(), listener, workspace, 
+                        ClearTool ct = createClearTool(config.getCleartoolExe(), workspace, 
                                 node.getRootPath(), launch, env, null);
                         
                         wipeoutWorkspace(ct, node, workspace);
@@ -519,10 +530,11 @@ public abstract class AbstractClearCaseSCM extends SCM {
     
     protected abstract View createView(String viewTag);
     
-    public ClearTool createClearTool(String executable, TaskListener listener, FilePath workspace, 
-            FilePath nodeRoot, Launcher launcher, EnvVars env, File logFile) {
-        CTLauncher ctLauncher = new CTLauncher(executable, listener, workspace, nodeRoot,
-                                               new LauncherWrapper(launcher), env, logFile);
+    public ClearTool createClearTool(String executable, FilePath workspace, FilePath nodeRoot,
+            Launcher launcher, EnvVars env, File logFile)
+    {
+        CTLauncher ctLauncher = new CTLauncher(executable, workspace, nodeRoot, launcher, env,
+                logFile);
         if (this.useDynamicView) {
             FilePath viewPath = new FilePath(workspace.getChannel(), this.viewDrive);
             return new ClearToolDynamic(ctLauncher, viewPath);
@@ -616,7 +628,7 @@ public abstract class AbstractClearCaseSCM extends SCM {
     
     
     
-    private boolean pollForChanges(AbstractProject<?, ?> project, Launcher launcher, FilePath workspace,
+    private boolean pollForChanges(AbstractProject<?, ?> project, Launcher l, FilePath workspace,
             TaskListener listener) throws IOException, InterruptedException, ClearToolError {
 
         Run<?, ?> lastBuild = project.getLastBuild();
@@ -649,7 +661,19 @@ public abstract class AbstractClearCaseSCM extends SCM {
         FilePath nodeRoot = Computer.currentComputer().getNode().getRootPath();
         ClearCaseConfiguration config = fetchClearCaseConfig(nodeName);
         
-        ClearTool ct = createClearTool(config.getCleartoolExe(), listener, workspace, nodeRoot, 
+        /* In this plugin, the commands are displayed in a separate console "cleartool output"
+         * because cleartool gets sometimes very verbose and it pollutes the build log.
+         * 
+         * By default, Hudson prints every command invoked in the console no matter 
+         * what the user wants. This is done through the getListener().getLogger().printLn() 
+         * method from the Launcher class. 
+         * 
+         * As there is no way to modify this behaviour, I had to create a new launcher 
+         * with a NULL TaskListener so that when Hudson prints something, it goes to 
+         * the trash instead of poping in the middle of the build log */
+        Launcher launcher = Executor.currentExecutor().getOwner().getNode().createLauncher(
+                TaskListener.NULL);
+        ClearTool ct = createClearTool(config.getCleartoolExe(), workspace, nodeRoot, 
                 launcher, env, null);
         HistoryAction historyAction = createHistoryAction(ct);
 
@@ -889,7 +913,7 @@ public abstract class AbstractClearCaseSCM extends SCM {
      **** BUILD LISTENER CLASS ****
      ******************************/
     
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings("rawtypes")
     @Extension
     public static class RestoreWorkspaceListener extends RunListener<AbstractBuild> {
 
@@ -918,7 +942,7 @@ public abstract class AbstractClearCaseSCM extends SCM {
                         logger.log("Workspace restored to " + originalWs.getRemote());
                     }
                 } catch (Exception e) {
-                    /* empty by design */;
+                    /* pass */;
                 }
             }
         }

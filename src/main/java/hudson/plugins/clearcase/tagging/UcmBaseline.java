@@ -29,33 +29,49 @@ import hudson.Extension;
 import hudson.FilePath;
 import hudson.Launcher;
 import hudson.Util;
-import hudson.model.AbstractBuild;
+import hudson.XmlFile;
 import hudson.model.BuildListener;
+import hudson.model.Descriptor;
+import hudson.model.Result;
+import hudson.model.Saveable;
+import hudson.model.TaskListener;
+import hudson.model.AbstractBuild;
+import hudson.model.AbstractProject;
 import hudson.model.Computer;
 import hudson.model.Executor;
-import hudson.model.Result;
+import hudson.model.Project;
 import hudson.model.StringParameterValue;
+import hudson.model.listeners.RunListener;
+import hudson.model.listeners.SaveableListener;
 import hudson.plugins.clearcase.ClearCaseUcmSCM;
 import hudson.plugins.clearcase.cleartool.ClearTool;
 import hudson.plugins.clearcase.log.ClearCaseLogger;
 import hudson.plugins.clearcase.log.ClearToolLogFile;
 import hudson.plugins.clearcase.objects.Baseline;
+import hudson.plugins.clearcase.objects.Baseline.PromotionLevel;
 import hudson.plugins.clearcase.objects.ClearCaseConfiguration;
 import hudson.plugins.clearcase.objects.Component;
 import hudson.plugins.clearcase.objects.CompositeComponent;
 import hudson.plugins.clearcase.objects.Stream;
-import hudson.plugins.clearcase.objects.View;
-import hudson.plugins.clearcase.objects.Baseline.PromotionLevel;
 import hudson.plugins.clearcase.objects.Stream.LockState;
+import hudson.plugins.clearcase.objects.View;
 import hudson.plugins.clearcase.util.ClearToolError;
 import hudson.plugins.clearcase.util.Tools;
+import hudson.tasks.BuildStepDescriptor;
 import hudson.tasks.BuildStepMonitor;
+import hudson.tasks.Builder;
 import hudson.tasks.Notifier;
+import hudson.util.CopyOnWriteList;
+import hudson.util.DescribableList;
+import hudson.util.PersistedList;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -168,8 +184,34 @@ public class UcmBaseline extends Notifier {
      ******************/ 
     @Override
     public boolean prebuild(AbstractBuild<?, ?> build, BuildListener listener) {
-        
-        
+        try {
+            insertBaselineBuildStep(build);
+            try {
+                File ctLogFile = ClearToolLogFile.getCleartoolLogFile(build);
+                ClearCaseLogger logger = new ClearCaseLogger(listener, ctLogFile);
+                logger.log("Delayed the baseline creation step *AFTER* the build wrappers.");
+            } catch (IOException e1) {
+                /* pass */
+            }
+            return true;
+        } catch (Exception e) {
+            /* This is an AbstractMavenProject or a MatrixProject
+             * therefore, we cannot access the builders field */
+            try {
+                File ctLogFile = ClearToolLogFile.getCleartoolLogFile(build);
+                ClearCaseLogger logger = new ClearCaseLogger(listener, ctLogFile);
+                logger.log("Could not schedule the baseline creation step *AFTER* the build wrappers.");
+                logger.log("Baseline creation will take place *BEFORE* the build wrappers.");
+            } catch (IOException e1) {
+                /* pass */
+            }
+            return doPreBuild(build, listener);
+        }
+    }
+
+
+
+    private boolean doPreBuild(AbstractBuild<?, ?> build, BuildListener listener) {
         if (build.getProject().getScm() instanceof ClearCaseUcmSCM) {
             
             try {
@@ -190,13 +232,22 @@ public class UcmBaseline extends Notifier {
                 Matcher match = p.matcher(baseName);
                 if (match.find()) {
                     throw new ClearToolError(String.format("Illegal characters found " +
-                    		"in baseline name : %s. " +
-                    		"An environment variable may not have been resolved.", match.group()));
+                            "in baseline name : %s. " +
+                            "An environment variable may not have been resolved.", match.group()));
                 }
                 /////// END VARIABLE RESOLUTION ///////////////////////////////////////////////////
-                
+                /* In this plugin, the commands are displayed in a separate console "cleartool output"
+                 * because cleartool gets sometimes very verbose and it pollutes the build log.
+                 * 
+                 * By default, Hudson prints every command invoked in the console no matter 
+                 * what the user wants. This is done through the getListener().getLogger().printLn() 
+                 * method from the Launcher class. 
+                 * 
+                 * As there is no way to modify this behaviour, I had to create a new launcher 
+                 * with a NULL TaskListener so that when Hudson prints something, it goes to 
+                 * the trash instead of poping in the middle of the build log */
                 Launcher launcher = Executor.currentExecutor().getOwner().getNode().createLauncher(
-                        listener);
+                        TaskListener.NULL);
                 String nodeName = Computer.currentComputer().getName();
                 ClearCaseConfiguration ccConfig = scm.fetchClearCaseConfig(nodeName);
                 FilePath workspace = scm.getOriginalWorkspace();
@@ -205,7 +256,7 @@ public class UcmBaseline extends Notifier {
                 }
                 
                 ClearTool ct = scm.createClearTool(ccConfig.getCleartoolExe(),
-                        listener, workspace, build.getBuiltOn().getRootPath(), 
+                        workspace, build.getBuiltOn().getRootPath(), 
                         launcher, env, ctLogFile);
 
                 View view = scm.getView();
@@ -217,7 +268,7 @@ public class UcmBaseline extends Notifier {
                 switch (state) {
                 case LOCKED:
                     logger.log("WARNING: building on a LOCKED stream. " +
-                    		"No baseline will be created.");
+                            "No baseline will be created.");
                     break;
                 case OBSOLETE:
                     logger.log("WARNING: building on an OBSOLETE stream. " +
@@ -236,7 +287,6 @@ public class UcmBaseline extends Notifier {
                         }
                     }
                 }
-                
                 
                 /////// BEGIN BASELINE CREATION/RETRIEVAL /////////////////////////////////////////
                 List<Component> componentsObj = new ArrayList<Component>();
@@ -264,7 +314,6 @@ public class UcmBaseline extends Notifier {
                         }
                     }
                 }
-                
                 
                 List<Baseline> createdBls = new ArrayList<Baseline>();
                 if (stream.getLockState() == LockState.UNLOCKED) { 
@@ -331,17 +380,72 @@ public class UcmBaseline extends Notifier {
         return true;
     }
     
+    
+    
+    public static class BaselineBuildStep extends Builder {
 
+        private transient final UcmBaseline publisher;
+        
+        @DataBoundConstructor
+        public BaselineBuildStep() {
+            this(null);
+        }
 
+        public BaselineBuildStep(UcmBaseline publisher) {
+            super();
+            this.publisher = publisher;
+        }
 
+        @Override
+        public boolean perform(AbstractBuild<?, ?> build, Launcher l, BuildListener listener)
+                throws InterruptedException, IOException
+        {
+            if (this.publisher != null) {
+                return this.publisher.doPreBuild(build, listener);
+            } else {
+                return true;
+            }
+        }
+        
+        @Extension
+        public static class DescriptorImpl extends BuildStepDescriptor<Builder> {
+
+            @SuppressWarnings("rawtypes")
+            @Override
+            public boolean isApplicable(Class<? extends AbstractProject> jobType) {
+                return false;
+            }
+
+            @Override
+            public String getDisplayName() {
+                return "UCM Baseline Creation";
+            }
+        }
+        
+    }
+
+    
 
 
     @Override
-    public boolean perform(AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener)
+    public boolean perform(AbstractBuild<?, ?> build, Launcher l, BuildListener listener)
             throws InterruptedException, IOException {
 
         if (build.getProject().getScm() instanceof ClearCaseUcmSCM) {
             try {
+                /* In this plugin, the commands are displayed in a separate console "cleartool output"
+                 * because cleartool gets sometimes very verbose and it pollutes the build log.
+                 * 
+                 * By default, Hudson prints every command invoked in the console no matter 
+                 * what the user wants. This is done through the getListener().getLogger().printLn() 
+                 * method from the Launcher class. 
+                 * 
+                 * As there is no way to modify this behaviour, I had to create a new launcher 
+                 * with a NULL TaskListener so that when Hudson prints something, it goes to 
+                 * the trash instead of poping in the middle of the build log */
+                Launcher launcher = Executor.currentExecutor().getOwner().getNode().createLauncher(
+                        TaskListener.NULL); 
+                
                 File ctLogFile = ClearToolLogFile.getCleartoolLogFile(build);
                 ClearCaseLogger logger = new ClearCaseLogger(listener, ctLogFile);
                 
@@ -371,7 +475,7 @@ public class UcmBaseline extends Notifier {
                 }
                 
                 ClearTool ct = scm.createClearTool(ccConfig.getCleartoolExe(),
-                        listener, workspace, build.getBuiltOn().getRootPath(), 
+                        workspace, build.getBuiltOn().getRootPath(), 
                         launcher, env, logFile);
                 
                 View view = scm.getView();
@@ -456,6 +560,56 @@ public class UcmBaseline extends Notifier {
         
         return true;
     }
+
+
+    @SuppressWarnings("rawtypes")
+    @Extension
+    public static class RestoreBuildStepsListener extends RunListener<AbstractBuild> {
+
+        public RestoreBuildStepsListener() {
+            this(AbstractBuild.class);
+        }
+        
+        protected RestoreBuildStepsListener(Class<AbstractBuild> targetType) {
+            super(targetType);
+        }
+        
+        @Override
+        public void onCompleted(AbstractBuild build, TaskListener listener) {
+            try {
+                Project<?, ?> project = (Project<?, ?>) build.getProject();
+                restoreOriginalBuildSteps(project);
+                try {
+                    File ctLogFile = ClearToolLogFile.getCleartoolLogFile(build);
+                    ClearCaseLogger logger = new ClearCaseLogger(listener, ctLogFile);
+                    logger.log("Restored the original build steps.");
+                } catch (IOException e1) {
+                    /* pass */
+                }
+            } catch (Exception e) {
+                listener.getLogger().println("Failed to restore orginial build steps.");
+                e.printStackTrace(listener.getLogger());
+            }
+        }
+    }
+    
+    @Extension
+    public static class OnSaveListener extends SaveableListener {
+
+        @Override
+        public void onChange(Saveable o, XmlFile file) {
+            if (o instanceof Project<?, ?>) {
+                try {
+                    restoreOriginalBuildSteps((Project<?, ?>) o);
+                    file.write(o);
+                } catch (Exception e) {
+                    /* pass */;
+                }
+            }
+        }
+        
+    }
+    
 
     /*********************
      ** PRIVATE METHODS ** 
@@ -550,6 +704,53 @@ public class UcmBaseline extends Notifier {
             }
         }
     }
+    
+    @SuppressWarnings("unchecked")
+    private void insertBaselineBuildStep(AbstractBuild<?, ?> build) throws NoSuchFieldException,
+            SecurityException, IllegalArgumentException, IllegalAccessException
+    {
+        Project<?, ?> project = (Project<?, ?>) build.getProject();
+        Field buildersField = Project.class.getDeclaredField("builders");
+        buildersField.setAccessible(true);
+        DescribableList<Builder,Descriptor<Builder>> builders = 
+                (DescribableList<Builder, Descriptor<Builder>>) buildersField.get(project);
+        List<Builder> modifiedList = new ArrayList<Builder>(builders.toList());
+        
+        BaselineBuildStep baselineBuildStep = new BaselineBuildStep(this);
+        modifiedList.add(0, baselineBuildStep);
+
+        Field dataField = PersistedList.class.getDeclaredField("data");
+        dataField.setAccessible(true);
+        CopyOnWriteList<Builder> data = (CopyOnWriteList<Builder>) dataField.get(builders);
+        data.replaceBy(modifiedList);
+    }
+    
+    @SuppressWarnings("unchecked")
+    private static void restoreOriginalBuildSteps(Project<?, ?> project) throws NoSuchFieldException,
+            IllegalAccessException
+    {
+        boolean modified = false;
+        Field buildersField = Project.class.getDeclaredField("builders");
+        buildersField.setAccessible(true);
+        DescribableList<Builder,Descriptor<Builder>> builders = 
+                (DescribableList<Builder, Descriptor<Builder>>) buildersField.get(project);
+        List<Builder> modifiedList = new ArrayList<Builder>(builders.toList());
+        for (Iterator<Builder> it = modifiedList.iterator(); it.hasNext();) {    
+            Builder b = it.next();
+            if (b instanceof BaselineBuildStep) {
+                it.remove();
+                modified = true;
+            }
+        }
+        if (modified) {
+            Field dataField = PersistedList.class.getDeclaredField("data");
+            dataField.setAccessible(true);
+            CopyOnWriteList<Builder> data = (CopyOnWriteList<Builder>) dataField.get(builders);
+            data.replaceBy(modifiedList);
+            Logger logger = Logger.getLogger(UcmBaseline.class.getName());
+            logger.info("Original builders restored for project: " + project.getName());
+        }
+    }
 
     /*************
      ** GETTERS **
@@ -592,3 +793,4 @@ public class UcmBaseline extends Notifier {
     }
 
 }
+

@@ -26,8 +26,8 @@ package hudson.plugins.clearcase.cleartool;
 
 import hudson.EnvVars;
 import hudson.FilePath;
+import hudson.Launcher;
 import hudson.Launcher.ProcStarter;
-import hudson.model.TaskListener;
 import hudson.plugins.clearcase.util.ClearToolError;
 import hudson.util.ArgumentListBuilder;
 import hudson.util.ForkOutputStream;
@@ -46,10 +46,9 @@ public class CTLauncher {
      **** FIELDS *******************
      *******************************/
 
-    private final TaskListener listener;
     private final FilePath workspace;
     private final FilePath nodeRoot;
-    private final LauncherWrapper launcher;
+    private final Launcher launcher;
     private final EnvVars env;
     private final File logFile;
 
@@ -59,11 +58,10 @@ public class CTLauncher {
      **** CONSTRUCTOR **************
      *******************************/
 
-    public CTLauncher(String executable, TaskListener listener, FilePath workspace, FilePath nodeRoot,
-            LauncherWrapper launcher, EnvVars env, File logFile)
+    public CTLauncher(String executable, FilePath workspace, FilePath nodeRoot,
+            Launcher launcher, EnvVars env, File logFile)
     {
         this.executable = executable;
-        this.listener = listener;
         this.workspace = workspace;
         this.nodeRoot = nodeRoot;
         this.launcher = launcher;
@@ -133,11 +131,6 @@ public class CTLauncher {
      **** GETTERS ******************
      *******************************/
 
-    public TaskListener getListener()
-    {
-        return listener;
-    }
-
     public FilePath getWorkspace()
     {
         return workspace;
@@ -147,7 +140,7 @@ public class CTLauncher {
         return nodeRoot;
     }
 
-    public LauncherWrapper getLauncher()
+    public Launcher getLauncher()
     {
         return this.launcher;
     }
