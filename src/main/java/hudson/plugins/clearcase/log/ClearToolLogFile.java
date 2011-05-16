@@ -37,7 +37,7 @@ public class ClearToolLogFile implements Serializable {
     /*****************
      **** GETTERS ****
      *****************/
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({ "rawtypes", "unchecked" })
     public AnnotatedLargeText getLogText(AbstractBuild<?, ?> build) {
         return new AnnotatedLargeText(getLogFile(build), Charset.defaultCharset(),
                                       !build.isLogUpdated(), ClearToolAnnotator.class);

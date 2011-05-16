@@ -35,7 +35,7 @@ public class UcmBaselineDescriptor extends BuildStepDescriptor<Publisher> {
     }
  
     @Override
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings("rawtypes")
     public boolean isApplicable(Class<? extends AbstractProject> clazz) {
         return true;
     }

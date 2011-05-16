@@ -14,7 +14,6 @@ import hudson.model.TaskListener;
 import hudson.plugins.clearcase.cleartool.CTLauncher;
 import hudson.plugins.clearcase.cleartool.ClearTool;
 import hudson.plugins.clearcase.cleartool.ClearToolSnapshot;
-import hudson.plugins.clearcase.cleartool.LauncherWrapper;
 import hudson.plugins.clearcase.objects.ClearCaseConfiguration;
 import hudson.plugins.clearcase.util.Tools;
 import hudson.scm.SCMDescriptor;
@@ -161,8 +160,8 @@ public class ClearCaseBaseSCMDescriptor extends SCMDescriptor<ClearCaseBaseSCM> 
 
         FilePath hudsonRoot = Hudson.getInstance().getRootPath();
         
-        CTLauncher ctLauncher = new CTLauncher(getCleartoolExe(), TaskListener.NULL, hudsonRoot, 
-                hudsonRoot, new LauncherWrapper(launcher), new EnvVars(), null);
+        CTLauncher ctLauncher = new CTLauncher(getCleartoolExe(), hudsonRoot, hudsonRoot, launcher,
+                new EnvVars(), null);
 
         ClearTool ct = new ClearToolSnapshot(ctLauncher);
 

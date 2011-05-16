@@ -25,7 +25,7 @@ import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
-@SuppressWarnings("unchecked")
+@SuppressWarnings("rawtypes")
 @RunWith(PowerMockRunner.class)
 @PrepareForTest( { Functions.class, Tools.class })
 public class ClearCaseUcmSCMTest {

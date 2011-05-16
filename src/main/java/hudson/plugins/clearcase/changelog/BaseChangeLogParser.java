@@ -48,8 +48,8 @@ import org.xml.sax.SAXException;
 public class BaseChangeLogParser extends ChangeLogParser {
 
     @Override
-	public ChangeLogSet<BaseChangeLogEntry> parse(@SuppressWarnings("unchecked") 
-												  AbstractBuild build, 
+	public ChangeLogSet<BaseChangeLogEntry> parse(@SuppressWarnings("rawtypes") 
+	                                              AbstractBuild build, 
 												  File changelogFile)
 			throws IOException, SAXException 
 	{
