@@ -73,6 +73,7 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -226,6 +227,8 @@ public abstract class AbstractClearCaseSCM extends SCM {
             // Checkout source files
             checkoutAction.checkout(workspace, listener);
             
+            publishBuildVariables(build);
+            
             /* This is a nasty hack for allowing other plugins 
              * to work when using clearcase views.
              * 
@@ -253,7 +256,7 @@ public abstract class AbstractClearCaseSCM extends SCM {
                 String customWorkspace = env.expand(this.customWorkspace);
                 customWorkspace = Tools.convertPathForOS(customWorkspace, Tools.isWindows(workspace));
                 
-                if (!new FilePath(workspace.getChannel(), customWorkspace).exists()) {
+                if (!new File(customWorkspace).isAbsolute()) {
                     // relative path, we resolve it against the root of the view
                     customWorkspace = Tools.joinPaths(env.get(CLEARCASE_VIEWPATH_ENVSTR), 
                             customWorkspace, Tools.fileSep(workspace));
@@ -266,8 +269,6 @@ public abstract class AbstractClearCaseSCM extends SCM {
                 workspace = new FilePath(workspace.getChannel(), customWorkspace);
                 logger.log("Workspace changed to " + workspace.getRemote());
             }
-            
-            publishBuildVariables(build);
             
             List<String> pathsForLsHistory = getLsHistoryPaths(cleartool);
             if (!pathsForLsHistory.isEmpty()) {
@@ -473,10 +474,8 @@ public abstract class AbstractClearCaseSCM extends SCM {
             }
         } catch (ClearToolError e) {
             listener.getLogger().println(e.toString());
-            /* 
-             * there was an error during the polling
-             * do NOT trigger the build as it will make unwanted failed builds
-             */
+            /* there was an error during the polling
+             * do NOT trigger the build as it will make unwanted failed builds */
             return PollingResult.NO_CHANGES;
         }
     }
@@ -628,7 +627,7 @@ public abstract class AbstractClearCaseSCM extends SCM {
     
     
     
-    private boolean pollForChanges(AbstractProject<?, ?> project, Launcher l, FilePath workspace,
+    private boolean pollForChanges(AbstractProject<?, ?> project, Launcher launcher, FilePath workspace,
             TaskListener listener) throws IOException, InterruptedException, ClearToolError {
 
         Run<?, ?> lastBuild = project.getLastBuild();
@@ -660,7 +659,7 @@ public abstract class AbstractClearCaseSCM extends SCM {
         String nodeName = Computer.currentComputer().getName();
         FilePath nodeRoot = Computer.currentComputer().getNode().getRootPath();
         ClearCaseConfiguration config = fetchClearCaseConfig(nodeName);
-        
+
         /* In this plugin, the commands are displayed in a separate console "cleartool output"
          * because cleartool gets sometimes very verbose and it pollutes the build log.
          * 
@@ -671,8 +670,6 @@ public abstract class AbstractClearCaseSCM extends SCM {
          * As there is no way to modify this behaviour, I had to create a new launcher 
          * with a NULL TaskListener so that when Hudson prints something, it goes to 
          * the trash instead of poping in the middle of the build log */
-        Launcher launcher = Executor.currentExecutor().getOwner().getNode().createLauncher(
-                TaskListener.NULL);
         ClearTool ct = createClearTool(config.getCleartoolExe(), workspace, nodeRoot, 
                 launcher, env, null);
         HistoryAction historyAction = createHistoryAction(ct);
