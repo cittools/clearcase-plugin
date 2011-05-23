@@ -31,17 +31,17 @@ import hudson.FilePath;
 import hudson.Functions;
 import hudson.Launcher;
 import hudson.Util;
+import hudson.model.BuildListener;
+import hudson.model.Result;
+import hudson.model.TaskListener;
 import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
-import hudson.model.BuildListener;
 import hudson.model.Computer;
 import hudson.model.Executor;
 import hudson.model.FreeStyleProject;
 import hudson.model.Node;
-import hudson.model.Result;
 import hudson.model.Run;
 import hudson.model.StringParameterValue;
-import hudson.model.TaskListener;
 import hudson.model.listeners.RunListener;
 import hudson.plugins.clearcase.changelog.ClearCaseChangeLogSet;
 import hudson.plugins.clearcase.checkout.CheckoutAction;
@@ -50,10 +50,10 @@ import hudson.plugins.clearcase.cleartool.ClearTool;
 import hudson.plugins.clearcase.cleartool.ClearToolDynamic;
 import hudson.plugins.clearcase.cleartool.ClearToolSnapshot;
 import hudson.plugins.clearcase.history.Filter;
-import hudson.plugins.clearcase.history.HistoryAction;
 import hudson.plugins.clearcase.history.Filter.DefaultFilter;
 import hudson.plugins.clearcase.history.Filter.DestroySubBranchFilter;
 import hudson.plugins.clearcase.history.Filter.FileFilter;
+import hudson.plugins.clearcase.history.HistoryAction;
 import hudson.plugins.clearcase.log.ClearCaseLogger;
 import hudson.plugins.clearcase.log.ClearToolLogAction;
 import hudson.plugins.clearcase.log.ClearToolLogFile;
@@ -64,16 +64,14 @@ import hudson.plugins.clearcase.util.ClearToolError;
 import hudson.plugins.clearcase.util.Tools;
 import hudson.scm.ChangeLogSet;
 import hudson.scm.PollingResult;
-import hudson.scm.SCM;
 import hudson.scm.SCMRevisionState;
-import hudson.util.StreamTaskListener;
+import hudson.scm.SCM;
 
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -86,10 +84,10 @@ import java.util.regex.Pattern;
  * specific checkout and polling logic.
  * 
  * @author Robin Jarry
- *              2009-12-10 : Changed getModuleRoot() by adding the getViewRoot() method
- *              2010-01-06 : Properly implemented the processWorkspaceBeforeDeletion() method
- *              2010-01-18 : Added shiny log flags
- *              2010-01-28 : Refactoring of the config.jelly files to make them match the fields names
+ *      2009-12-10 : Changed getModuleRoot() by adding the getViewRoot() method
+ *      2010-01-06 : Properly implemented the processWorkspaceBeforeDeletion() method
+ *      2010-01-18 : Added shiny log flags
+ *      2010-01-28 : Refactoring of the config.jelly files to make them match the fields names
  */
 public abstract class AbstractClearCaseSCM extends SCM {
 
@@ -391,8 +389,6 @@ public abstract class AbstractClearCaseSCM extends SCM {
             // if the job has been configured to use a custom workspace, we forbid its deletion 
             return false;
         } else {
-            StreamTaskListener listener = new StreamTaskListener(System.out, null);
-            
             if ("".equals(node.getNodeName())) {
                 /* 
                  * we are calling "wipeout workspace" on the master, 
@@ -408,11 +404,11 @@ public abstract class AbstractClearCaseSCM extends SCM {
                              * if the node hosting the workspace is connected 
                              * we remove all the views from its workspace 
                              */
-                            EnvVars env = build.getEnvironment(listener);
+                            EnvVars env = build.getEnvironment(TaskListener.NULL);
                             ClearCaseConfiguration config = fetchClearCaseConfig(nod.getNodeName());
-                            Launcher launch = nod.createLauncher(listener);
+                            Launcher launcher = nod.createLauncher(TaskListener.NULL);
                             ClearTool ct = createClearTool(config.getCleartoolExe(), ws, 
-                                    nod.getRootPath(), launch, env, null);
+                                    nod.getRootPath(), launcher, env, null);
                             wipeoutWorkspace(ct, nod, ws);
                         } catch (Exception e) {
                             String message = String.format("Failed to clean views from %s on %s", 
@@ -432,7 +428,7 @@ public abstract class AbstractClearCaseSCM extends SCM {
                 for (AbstractBuild<?, ?> build : project.getBuilds()) {
                     try {
                         validBuild = build;
-                        env = build.getEnvironment(listener);
+                        env = build.getEnvironment(TaskListener.NULL);
                         break;
                     } catch (Exception e) {
                         continue;
@@ -442,9 +438,9 @@ public abstract class AbstractClearCaseSCM extends SCM {
                 if (workspace != null && validBuild != null && env != null) {
                     try {
                         ClearCaseConfiguration config = fetchClearCaseConfig(node.getNodeName());
-                        Launcher launch = node.createLauncher(listener);
+                        Launcher launcher = node.createLauncher(TaskListener.NULL);
                         ClearTool ct = createClearTool(config.getCleartoolExe(), workspace, 
-                                node.getRootPath(), launch, env, null);
+                                node.getRootPath(), launcher, env, null);
                         
                         wipeoutWorkspace(ct, node, workspace);
                     } catch (Exception e) {
@@ -483,7 +479,8 @@ public abstract class AbstractClearCaseSCM extends SCM {
     /** implementation of abstract method from {@link hudson.scm.SCM} */
     @Override
     public SCMRevisionState calcRevisionsFromBuild(AbstractBuild<?, ?> build, Launcher launcher,
-            TaskListener listener) throws IOException, InterruptedException {
+            TaskListener listener) throws IOException, InterruptedException
+    {
         /* not implemented */
         return null;
     }
@@ -596,16 +593,12 @@ public abstract class AbstractClearCaseSCM extends SCM {
         }
     }
     
-    
-    
-    
 
     protected List<Filter> configureFilters(ClearTool ct) {
         List<Filter> filters = new ArrayList<Filter>();
         filters.add(new DefaultFilter());
         String[] excludedStrings = getExcludedRegionsNormalized();
         boolean windows = Tools.isWindows(ct.getWorkspace());
-        
         
         if (excludedStrings != null && excludedStrings.length > 0) {
             for (String s : excludedStrings) {
@@ -627,28 +620,29 @@ public abstract class AbstractClearCaseSCM extends SCM {
     
     
     
-    private boolean pollForChanges(AbstractProject<?, ?> project, Launcher launcher, FilePath workspace,
-            TaskListener listener) throws IOException, InterruptedException, ClearToolError {
-
+    private boolean pollForChanges(AbstractProject<?, ?> project, Launcher launcher,
+            FilePath workspace, TaskListener listener) throws IOException, InterruptedException,
+            ClearToolError
+    {
         Run<?, ?> lastBuild = project.getLastBuild();
         if (lastBuild == null) {
-            throw new ClearToolError("No previous build has been found, " +
-                "please launch the build manually.");
+            throw new ClearToolError("No previous build has been found, "
+                    + "please launch the build manually.");
         }
         Date buildTime = lastBuild.getTimestamp().getTime();
 
         CCParametersAction params = lastBuild.getAction(CCParametersAction.class);
         if (params == null) {
-            throw new ClearToolError("No previous build has been found, " +
-                "please launch the build manually.");
+            throw new ClearToolError("No previous build has been found, "
+                    + "please launch the build manually.");
         }
         String prevBuildViewName = params.getParameter(CLEARCASE_VIEWNAME_ENVSTR).value;
         String prevBuildViewPath = params.getParameter(CLEARCASE_VIEWPATH_ENVSTR).value;
         if (prevBuildViewName == null || prevBuildViewPath == null) {
-            throw new ClearToolError("No previous build has been found, " +
-                "please launch the build manually.");
+            throw new ClearToolError("No previous build has been found, "
+                    + "please launch the build manually.");
         }
-        
+
         if (getMultiSitePollBuffer() != 0) {
             long lastBuildMilliSecs = lastBuild.getTimestamp().getTimeInMillis();
             buildTime = new Date(lastBuildMilliSecs - (1000 * 60 * getMultiSitePollBuffer()));
@@ -708,7 +702,6 @@ public abstract class AbstractClearCaseSCM extends SCM {
         } else {
             return ClearCaseBaseSCM.BASE_DESCRIPTOR.getConfiguration(clearcaseConfig);
         }
-        
     }
     
     /*******************************
@@ -775,7 +768,6 @@ public abstract class AbstractClearCaseSCM extends SCM {
             }
             rules.add(rule);
         }
-        
         return rules;
     }
     
@@ -943,6 +935,5 @@ public abstract class AbstractClearCaseSCM extends SCM {
                 }
             }
         }
-        
     }
 }
