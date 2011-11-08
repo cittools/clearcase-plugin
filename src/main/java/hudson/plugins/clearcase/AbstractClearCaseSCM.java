@@ -26,23 +26,21 @@ package hudson.plugins.clearcase;
 
 import static hudson.Util.fixEmptyAndTrim;
 import hudson.EnvVars;
-import hudson.Extension;
 import hudson.FilePath;
 import hudson.Functions;
 import hudson.Launcher;
 import hudson.Util;
+import hudson.model.BuildListener;
+import hudson.model.Result;
+import hudson.model.TaskListener;
 import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
-import hudson.model.BuildListener;
 import hudson.model.Computer;
 import hudson.model.Executor;
 import hudson.model.FreeStyleProject;
 import hudson.model.Node;
-import hudson.model.Result;
 import hudson.model.Run;
 import hudson.model.StringParameterValue;
-import hudson.model.TaskListener;
-import hudson.model.listeners.RunListener;
 import hudson.plugins.clearcase.changelog.ClearCaseChangeLogSet;
 import hudson.plugins.clearcase.checkout.CheckoutAction;
 import hudson.plugins.clearcase.cleartool.CTLauncher;
@@ -50,10 +48,10 @@ import hudson.plugins.clearcase.cleartool.ClearTool;
 import hudson.plugins.clearcase.cleartool.ClearToolDynamic;
 import hudson.plugins.clearcase.cleartool.ClearToolSnapshot;
 import hudson.plugins.clearcase.history.Filter;
-import hudson.plugins.clearcase.history.HistoryAction;
 import hudson.plugins.clearcase.history.Filter.DefaultFilter;
 import hudson.plugins.clearcase.history.Filter.DestroySubBranchFilter;
 import hudson.plugins.clearcase.history.Filter.FileFilter;
+import hudson.plugins.clearcase.history.HistoryAction;
 import hudson.plugins.clearcase.log.ClearCaseLogger;
 import hudson.plugins.clearcase.log.ClearToolLogAction;
 import hudson.plugins.clearcase.log.ClearToolLogFile;
@@ -64,16 +62,14 @@ import hudson.plugins.clearcase.util.ClearToolError;
 import hudson.plugins.clearcase.util.Tools;
 import hudson.scm.ChangeLogSet;
 import hudson.scm.PollingResult;
-import hudson.scm.SCM;
 import hudson.scm.SCMRevisionState;
-import hudson.util.StreamTaskListener;
+import hudson.scm.SCM;
 
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -95,6 +91,7 @@ public abstract class AbstractClearCaseSCM extends SCM {
 
     public static final String CLEARCASE_VIEWNAME_ENVSTR = "CLEARCASE_VIEWNAME";
     public static final String CLEARCASE_VIEWPATH_ENVSTR = "CLEARCASE_VIEWPATH";
+    public static final String ORIGINAL_WORKSPACE_ENVSTR = "ORIGINAL_WORKSPACE";
     
     /*******************************
      **** FIELDS *******************
@@ -190,6 +187,7 @@ public abstract class AbstractClearCaseSCM extends SCM {
             File ctLogFile = ClearToolLogFile.getCleartoolLogFile(build);
             ClearCaseLogger logger = new ClearCaseLogger(listener, ctLogFile);
             
+            build.addAction(new ClearToolLogAction());
             logger.log("### Begin source code retrieval ###");
 
             setEnv(build.getEnvironment(listener));
@@ -222,7 +220,6 @@ public abstract class AbstractClearCaseSCM extends SCM {
 
             CheckoutAction checkoutAction = createCheckoutAction(cleartool, logger, view, storageLocation);
             
-            build.addAction(new ClearToolLogAction());
             
             // Checkout source files
             checkoutAction.checkout(workspace, listener);
@@ -383,77 +380,40 @@ public abstract class AbstractClearCaseSCM extends SCM {
          * 
          * Changed the algorithm so that it scans all the past builds, 
          * therefore, cleaning views on slaves too.
+         * 
+         * Robin Jarry 2011-06-28
+         * 
+         * This method originally tried to perform 'cleartool rmview' on all folders present
+         * in the workspace of each build. 
+         * 
+         * In order to comply with the option 'SCM custom workspace' that can move the workspace 
+         * inside a view (snapshot or dynamic), we cannot use it as a reference for scanning for 
+         * snapshot views.
+         * 
+         * Now, we will get the view tag from the build, and if the view associated to the 
+         * tag is snapshot, we remove it by its tag.
          */
-
+        
         if (isCustomWorkspace){
             logger.log(Level.WARNING, "The project " + project.getName() + 
                     " uses a custom workspace location. Its workspace cannot be deleted.");
             // if the job has been configured to use a custom workspace, we forbid its deletion 
             return false;
         } else {
-            StreamTaskListener listener = new StreamTaskListener(System.out, null);
-            
-            if ("".equals(node.getNodeName())) {
-                /* 
-                 * we are calling "wipeout workspace" on the master, 
-                 * the wipeout command needs to be called
-                 * on every workspace of every build of the project 
-                 */
-                for (AbstractBuild<?, ?> build : project.getBuilds()) {
-                    FilePath ws = build.getWorkspace();
-                    Node nod = build.getBuiltOn();
-                    if (ws != null && ws.listDirectories() != null && !ws.listDirectories().isEmpty()) { 
-                        try {
-                            /* 
-                             * if the node hosting the workspace is connected 
-                             * we remove all the views from its workspace 
-                             */
-                            EnvVars env = build.getEnvironment(listener);
-                            ClearCaseConfiguration config = fetchClearCaseConfig(nod.getNodeName());
-                            Launcher launch = nod.createLauncher(listener);
-                            ClearTool ct = createClearTool(config.getCleartoolExe(), ws, 
-                                    nod.getRootPath(), launch, env, null);
-                            wipeoutWorkspace(ct, nod, ws);
-                        } catch (Exception e) {
-                            String message = String.format("Failed to clean views from %s on %s", 
-                                    ws.getRemote(), nod.getDisplayName());
-                            logger.log(Level.WARNING, message, e);
-                            continue;
-                        }
-                    }
-                }
-            } else {
-                /* 
-                 * we are on a node, this method is invoked automatically by hudson
-                 * for cleanup purposes : we only wipeout the provided workspace 
-                 */
-                AbstractBuild<?, ?> validBuild = null;
-                EnvVars env = null;
-                for (AbstractBuild<?, ?> build : project.getBuilds()) {
-                    try {
-                        validBuild = build;
-                        env = build.getEnvironment(listener);
-                        break;
-                    } catch (Exception e) {
-                        continue;
-                    }
-                }
-                
-                if (workspace != null && validBuild != null && env != null) {
-                    try {
-                        ClearCaseConfiguration config = fetchClearCaseConfig(node.getNodeName());
-                        Launcher launch = node.createLauncher(listener);
-                        ClearTool ct = createClearTool(config.getCleartoolExe(), workspace, 
-                                node.getRootPath(), launch, env, null);
-                        
-                        wipeoutWorkspace(ct, node, workspace);
-                    } catch (Exception e) {
-                        String message = String.format("Failed to clean views from %s on %s", 
-                                                workspace.getRemote(), node.getDisplayName());
-                        logger.log(Level.WARNING, message, e);
-                        return false;
-                    }
-                }
+            /* 
+             * "processWorkspaceBeforeDeletion" is being called on the master, 
+             * we must unregister all snapshot views created on all builds 
+             */
+            for (AbstractBuild<?, ?> build : project.getBuilds()) {
+                removeBuildView(build, logger);
+            }
+            /*
+             * There may be several views with different tags in the same workspace
+             * (created by different builds) So we must make sure that all the views
+             * are properly removed *BEFORE* deleting the original workspace directory. 
+             */
+            for (AbstractBuild<?, ?> build : project.getBuilds()) {
+                cleanupOriginalWorkspace(build, logger);
             }
             return true;
         }
@@ -558,46 +518,6 @@ public abstract class AbstractClearCaseSCM extends SCM {
         normViewName = normViewName.replaceAll("[\\s\\\\\\/:\\?\\*\\|]+", "_");
         return normViewName;
     }
-
-    private void wipeoutWorkspace(ClearTool cleartool, Node node, FilePath workspace) 
-            throws IOException, InterruptedException 
-    {
-        Logger logger = Logger.getLogger(this.getClass().getName());
-
-        String message = String.format("Scanning %s on %s for ClearCase views.", 
-                                        workspace.getRemote(), node.getDisplayName());
-        logger.log(Level.INFO, message);
-
-        for (FilePath f : workspace.listDirectories()) {
-            View view;
-            String uuid;
-            
-            try {
-                view = cleartool.getViewInfo(f.getName());
-                uuid = cleartool.getSnapshotViewUuid(f);
-            } catch (ClearToolError e) {
-                // the name is not registered as a view tag
-                continue;
-            } catch (IOException e) {
-                // there was no view.dat in the folder
-                // no way of retrieving the uuid of the view we do not delete it
-                continue;
-            }
-            
-            if (!view.isDynamic() && view.getUuid().equalsIgnoreCase(uuid)) {
-                try {
-                    cleartool.rmview(view);
-                    logger.log(Level.INFO, "Removed ClearCase view: " + view.getName());
-                } catch (ClearToolError e) {
-                    logger.log(Level.WARNING, "Failed to remove ClearCase view: " 
-                                               + view.getName(), e);
-                }
-            }
-        }
-    }
-    
-    
-    
     
 
     protected List<Filter> configureFilters(ClearTool ct) {
@@ -626,7 +546,9 @@ public abstract class AbstractClearCaseSCM extends SCM {
     }
     
     
-    
+    /**
+     * This method is called by {@link #compareRemoteRevisionWith()}
+     */
     private boolean pollForChanges(AbstractProject<?, ?> project, Launcher launcher, FilePath workspace,
             TaskListener listener) throws IOException, InterruptedException, ClearToolError {
 
@@ -659,17 +581,6 @@ public abstract class AbstractClearCaseSCM extends SCM {
         String nodeName = Computer.currentComputer().getName();
         FilePath nodeRoot = Computer.currentComputer().getNode().getRootPath();
         ClearCaseConfiguration config = fetchClearCaseConfig(nodeName);
-
-        /* In this plugin, the commands are displayed in a separate console "cleartool output"
-         * because cleartool gets sometimes very verbose and it pollutes the build log.
-         * 
-         * By default, Hudson prints every command invoked in the console no matter 
-         * what the user wants. This is done through the getListener().getLogger().printLn() 
-         * method from the Launcher class. 
-         * 
-         * As there is no way to modify this behaviour, I had to create a new launcher 
-         * with a NULL TaskListener so that when Hudson prints something, it goes to 
-         * the trash instead of poping in the middle of the build log */
         ClearTool ct = createClearTool(config.getCleartoolExe(), workspace, nodeRoot, 
                 launcher, env, null);
         HistoryAction historyAction = createHistoryAction(ct);
@@ -904,45 +815,64 @@ public abstract class AbstractClearCaseSCM extends SCM {
         if (path != null) {
             parameters.add(new StringParameterValue(CLEARCASE_VIEWPATH_ENVSTR, path));
         }
+        if (customWorkspace != null && build.getWorkspace() != null) {
+            parameters.add(new StringParameterValue(ORIGINAL_WORKSPACE_ENVSTR, build.getWorkspace()
+                    .getRemote()));
+        }
     }
     
-    /******************************
-     **** BUILD LISTENER CLASS ****
-     ******************************/
-    
-    @SuppressWarnings("rawtypes")
-    @Extension
-    public static class RestoreWorkspaceListener extends RunListener<AbstractBuild> {
-
-        public RestoreWorkspaceListener() {
-            this(AbstractBuild.class);
-        }
-        
-        protected RestoreWorkspaceListener(Class<AbstractBuild> targetType) {
-            super(targetType);
-        }
-        
-        @Override
-        public void onCompleted(AbstractBuild build, TaskListener listener) {
-            SCM scm = build.getProject().getScm();
-            if (scm instanceof AbstractClearCaseSCM) {
-                try {
-                    File ctLogFile = ClearToolLogFile.getCleartoolLogFile(build);
-                    ClearCaseLogger logger = new ClearCaseLogger(listener, ctLogFile);
-                    FilePath originalWs = ((AbstractClearCaseSCM) scm).getOriginalWorkspace();
-                    String customWs = ((AbstractClearCaseSCM) scm).getCustomWorkspace();
-                    if (originalWs != null && customWs != null) {
-                        Field workspaceField = AbstractBuild.class.getDeclaredField("workspace");
-                        workspaceField.setAccessible(true);
-                        workspaceField.set(build, originalWs.getRemote());
-                        build.getEnvironment(listener).put("WORKSPACE", originalWs.getRemote());
-                        logger.log("Workspace restored to " + originalWs.getRemote());
-                    }
-                } catch (Exception e) {
-                    /* pass */;
-                }
+    private void removeBuildView(AbstractBuild<?, ?> build, Logger logger) {
+        String viewTag = null;
+        for (StringParameterValue p : Tools.getCCParameters(build)) {
+            if (CLEARCASE_VIEWNAME_ENVSTR.equals(p.getName())) {
+                viewTag = p.value;
+                break;
             }
         }
-        
+        if (viewTag != null) {
+            try {
+                Node node = build.getBuiltOn();
+                EnvVars env = build.getEnvironment(TaskListener.NULL);
+                ClearCaseConfiguration config = fetchClearCaseConfig(node.getNodeName());
+                Launcher launch = node.createLauncher(TaskListener.NULL);
+                ClearTool ct = createClearTool(config.getCleartoolExe(), node.getRootPath(),
+                        node.getRootPath(), launch, env, null);
+                
+                View buildView = ct.getViewInfo(viewTag);
+                
+                if (!buildView.isDynamic()) {
+                    /* we only remove snapshot views */
+                    ct.rmview(buildView, true);
+                    logger.info(String.format("Removed view '%s'", buildView.getName()));
+                }
+            } catch (ClearToolError e) {
+                logger.warning(e.toString());
+            } catch (Exception e) {
+                logger.log(Level.SEVERE, "", e);
+            }
+        }
     }
+
+    private void cleanupOriginalWorkspace(AbstractBuild<?, ?> build, Logger logger) {
+        String originalWs = null;
+        for (StringParameterValue p : Tools.getCCParameters(build)) {
+            if (ORIGINAL_WORKSPACE_ENVSTR.equals(p.getName())) {
+                originalWs = p.value;
+                break;
+            }
+        }
+        if (originalWs != null) {
+            try {
+                FilePath fp = new FilePath(build.getWorkspace().getChannel(), originalWs);
+                if (fp.exists()) {
+                    fp.deleteRecursive();
+                    logger.info(String.format("Deleted original workspace '%s' for project '%s'", 
+                            originalWs, build.getProject().getName()));
+                }
+            } catch (Exception e) {
+                logger.log(Level.WARNING, "", e);
+            }
+        }
+    }
+
 }

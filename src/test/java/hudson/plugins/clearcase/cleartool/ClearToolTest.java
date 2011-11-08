@@ -336,6 +336,33 @@ public class ClearToolTest {
     }
 
     @Test
+    public void rmtagTest() throws Exception {
+        when(launcher.run(any(ArgumentListBuilder.class), any(FilePath.class))).thenReturn("");
+
+        View v = new View("viewName", null, false);
+
+        ct.rmtag(v);
+
+        // verify command line
+        ArgumentListBuilder args = new ArgumentListBuilder("rmtag", "-view", v.getName());
+        verify(launcher).run(argThat(new IsSameArgs(args)), (FilePath) isNull());
+    }
+    
+    @Test
+    public void unregisterTest() throws Exception {
+        when(launcher.run(any(ArgumentListBuilder.class), any(FilePath.class))).thenReturn("");
+
+        View v = new View("viewName", null, false);
+        v.setUuid("abcef0123456789");
+        
+        ct.unregister(v);
+
+        // verify command line
+        ArgumentListBuilder args = new ArgumentListBuilder("unregister", "-view", "-uuid", v.getUuid());
+        verify(launcher).run(argThat(new IsSameArgs(args)), (FilePath) isNull());
+    }    
+    
+    @Test
     public void startViewTest() throws Exception {
         when(launcher.run(any(ArgumentListBuilder.class), any(FilePath.class))).thenReturn("");
 

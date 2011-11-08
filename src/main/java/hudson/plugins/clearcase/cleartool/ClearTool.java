@@ -358,21 +358,46 @@ public abstract class ClearTool implements CTFunctions {
         launcher.run(args, null);
     }
 
+    
+    public void rmview(View view) throws IOException, InterruptedException, ClearToolError {
+        rmview(view, false);
+    }
+    
     /** implements {@link CTFunctions#rmview(View)} **/
     @Override
-    public void rmview(View view) throws IOException, InterruptedException, ClearToolError {
+    public void rmview(View view, boolean useTag) throws IOException, InterruptedException, ClearToolError {
         ArgumentListBuilder args = new ArgumentListBuilder();
         FilePath execPath = null;
         
         args.add("rmview");
         args.add("-force");
-        if (view.isDynamic()) {
+        if (useTag || view.isDynamic()) {
             args.add("-tag", view.getName());
         } else {
             args.add(view.getName());
             execPath = getWorkspace();
         }
         launcher.run(args, execPath);
+    }
+    
+    
+    /** implements {@link CTFunctions#rmtag(View)} **/
+    @Override
+    public void rmtag(View view) throws IOException, InterruptedException, ClearToolError {
+        ArgumentListBuilder args = new ArgumentListBuilder();
+        args.add("rmtag");
+        args.add("-view", view.getName());
+        launcher.run(args, null);
+    }
+    
+    /** implements {@link CTFunctions#unregister(View)} **/
+    @Override
+    public void unregister(View view) throws IOException, InterruptedException, ClearToolError {
+        ArgumentListBuilder args = new ArgumentListBuilder();
+        args.add("unregister");
+        args.add("-view");
+        args.add("-uuid", view.getUuid());
+        launcher.run(args, null);
     }
 
     /** implements {@link CTFunctions#startView()} **/

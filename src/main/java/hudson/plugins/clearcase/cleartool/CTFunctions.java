@@ -60,14 +60,35 @@ public interface CTFunctions {
     throws IOException, InterruptedException, ClearToolError;
 
     /**
-     * Removes the view from a VOB
+     * Removes the view from a VOB.
+     * 
+     * Calls rmtag and unregister before deleting the view files
      * 
      * @param view
      */
     void 
-    rmview(View view) 
+    rmview(View view, boolean useTag) 
     throws IOException, InterruptedException, ClearToolError;
 
+    /**
+     * Removes a view tag from the clearcase registry
+     *  
+     * @param view
+     */
+    void
+    rmtag(View view)
+    throws IOException, InterruptedException, ClearToolError;
+    
+    
+    /**
+     * Unregisters a view uuid from the clearcase registry 
+     * @param view
+     */
+    void
+    unregister(View view)
+    throws IOException, InterruptedException, ClearToolError;
+    
+    
     /**
      * Starts or connects to a dynamic view's view_server process
      * 
