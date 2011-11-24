@@ -12,7 +12,7 @@
     <artifactId>clearcase-thales</artifactId>
     <packaging>hpi</packaging>
     <name>Hudson ClearCase Plug-in</name>
-    <version>2.6.2</version>
+    <version>3.0.0-SNAPSHOT</version>
 
     <licenses>
         <license>
@@ -23,7 +23,7 @@
 
     <developers>
         <developer>
-            <id>rjarry</id>
+            <id>robin-jarry</id>
             <name>Robin Jarry</name>
             <email>robin.jarry@external.thalesgroup.com</email>
             <timezone>+1</timezone>
@@ -81,7 +81,14 @@
         <connection>scm:git:git://github.com:cittools/clearcase-plugin.git</connection>
         <developerConnection>scm:git:git@github.com:cittools/clearcase-plugin.git</developerConnection>
     </scm>
-
+    
+    <repositories>
+        <repository>
+            <id>maven.jenkins-ci.org</id>
+            <url>http://maven.jenkins-ci.org:8081/content/repositories/releases</url>
+        </repository>
+    </repositories>
+    
     <distributionManagement>
         <repository>
             <id>maven.jenkins-ci.org</id>

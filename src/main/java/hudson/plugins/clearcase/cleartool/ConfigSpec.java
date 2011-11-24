@@ -10,39 +10,51 @@ import java.util.regex.Pattern;
 
 /**
  * This class represents a ClearCase view config spec.
- * 
+ *
  * It contains all the logic used to make transformations on it such as:
  * <ul>
- * 	<li>Detect, add or remove load rules</li>
- *  <li>Construct a config spec that "shows" one or several labels/baselines</li>
+ * <li>Detect, add or remove load rules</li>
+ * <li>Construct a config spec that "shows" one or several labels/baselines</li>
  * </ul>
- * 
+ *
  * @author Robin Jarry
  */
 public class ConfigSpec {
 
-	private static final Pattern LOAD_RULE_PATTERN = Pattern.compile("^\\s+load\\s+(.+)\\s+$");
-	
-	private final String configSpec;
-	
-	
-	public ConfigSpec(String configSpec) {
-		this.configSpec = configSpec;
-	}
-	
-	
-	
-	
-	/**
-     * Extracts a set of load rules from a config spec without leading slashes or backslashes
-     *
-     * @param configSpec
-     * @return load rules
+    private static final Pattern LOAD_RULE_PATTERN = Pattern.compile("^\\s*load\\s+(.+)\\s*$",
+            Pattern.MULTILINE);
+
+    private final StringBuilder value;
+
+    public ConfigSpec(String value) {
+        this.value = new StringBuilder(value.trim());
+    }
+
+    /**
+     * Produce a new config spec from an old one
+     */
+    public ConfigSpec(ConfigSpec otherConfigSpec) {
+        this.value = new StringBuilder(otherConfigSpec.getValue().toString());
+    }
+
+
+    /**
+     * Produce a new config spec from an old one with new load rules
+     */
+    public ConfigSpec(ConfigSpec otherConfigSpec, List<String> newLoadRules, boolean windows) {
+        this(otherConfigSpec);
+        replaceLoadRules(newLoadRules, windows);
+    }
+
+
+    /**
+     * Extracts a set of load rules from a config spec without leading slashes
+     * or backslashes
      */
     public List<String> extractLoadRules() {
-    	List<String> loadRules = new ArrayList<String>();
-        Matcher matcher = LOAD_RULE_PATTERN.matcher(this.configSpec);
-        while (matcher.find()){
+        List<String> loadRules = new ArrayList<String>();
+        Matcher matcher = LOAD_RULE_PATTERN.matcher(this.value);
+        while (matcher.find()) {
             String rule = matcher.group(1);
             while (rule.startsWith("/") || rule.startsWith("\\")) {
                 rule = rule.substring(1);
@@ -51,61 +63,70 @@ public class ConfigSpec {
         }
         return loadRules;
     }
-    
-    /**
-     * Produce a new config spec from an old one and a new set of load rules
-     * 
-     * @param oldConfigSpec
-     * @param newLoadRules
-     * @return
-     */
-    protected String makeNewConfigSpec(List<String> newLoadRules, boolean windows) {
-        StringBuilder newConfigSpec = new StringBuilder(removeOldLoadRules(this.configSpec));
+
+    public void replaceLoadRules(List<String> newLoadRules, boolean windows) {
+        removeLoadRules();
         for (String loadRule : newLoadRules) {
-            newConfigSpec.append("\nload " + File.separator + loadRule);
+            value.append("\nload " + File.separator + loadRule);
         }
-        newConfigSpec.append('\n');
-        
-        return Tools.convertPathForOS(newConfigSpec.toString(), windows);
+        value.append('\n');
+        String newValue = Tools.convertPathForOS(this.value.toString(), windows);
+        value.replace(0, value.length(), newValue.trim());
     }
 
     /**
      * Remove the load rules from a config spec
-     * 
+     *
      * @param oldConfigSpec
      * @return
      */
-    private static String removeOldLoadRules(String oldConfigSpec) {
-        return oldConfigSpec.replaceAll(LOAD_RULE_PATTERN.pattern(), "").trim();
+    public void removeLoadRules() {
+        String newValue = LOAD_RULE_PATTERN.matcher(value).replaceAll("");
+        value.replace(0, value.length(), newValue.trim());
     }
-    
-    protected boolean loadRulesChanged(List<String> oldLoadRules, List<String> newLoadRules) {
-        for (String loadRule : oldLoadRules) {
-            if (!newLoadRules.contains(loadRule)) {
+
+    public boolean loadRulesDiffer(List<String> loadRules) {
+        List<String> thisLoadRules = extractLoadRules();
+        for (String loadRule : thisLoadRules) {
+            if (!loadRules.contains(loadRule)) {
                 return true;
             }
         }
-        for (String loadRule : newLoadRules) {
-            if (!oldLoadRules.contains(loadRule)) {
+        for (String loadRule : loadRules) {
+            if (!thisLoadRules.contains(loadRule)) {
                 return true;
             }
         }
         return false;
     }
-    
-    protected boolean configSpecChanged(String oldConfigSpec, String newConfigSpec) {
-        if (oldConfigSpec != null && newConfigSpec != null) {
-            return !oldConfigSpec.trim().equals(newConfigSpec.trim());
-        } else {
-            return true;
-        }
+
+    //// ACCESSORS /////
+    public StringBuilder getValue() {
+        return value;
     }
-    
-    
-    
-    
-    
-    
-    
-	
+
+    ///// UTILS ////
+
+    @Override
+    public int hashCode() {
+        return value.hashCode();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        boolean result = false;
+        if (obj != null && obj instanceof ConfigSpec) {
+            ConfigSpec other = (ConfigSpec) obj;
+            if (other.getValue() != null) {
+                result = other.value.equals(this.value);
+            }
+        }
+        return result;
+    }
+
+    @Override
+    public String toString() {
+        return value.toString();
+    }
+
 }

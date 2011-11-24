@@ -27,6 +27,7 @@ package hudson.plugins.clearcase.checkout;
 import hudson.FilePath;
 import hudson.model.TaskListener;
 import hudson.plugins.clearcase.cleartool.ClearTool;
+import hudson.plugins.clearcase.cleartool.ConfigSpec;
 import hudson.plugins.clearcase.log.ClearCaseLogger;
 import hudson.plugins.clearcase.objects.View;
 import hudson.plugins.clearcase.util.ClearToolError;
@@ -44,8 +45,8 @@ public class DynamicCheckoutAction extends CheckoutAction {
     private final boolean doNotUpdateConfigSpec;
 
 
-	public DynamicCheckoutAction(ClearTool cleartool, ClearCaseLogger logger, View view,
-            String stgloc, String mkViewOptionalParams, boolean useUpdate, String configSpec, 
+    public DynamicCheckoutAction(ClearTool cleartool, ClearCaseLogger logger, View view,
+            String stgloc, String mkViewOptionalParams, boolean useUpdate, String configSpec,
             boolean doNotUpdateConfigSpec)
     {
         super(cleartool, logger, view, stgloc, mkViewOptionalParams, useUpdate);
@@ -55,23 +56,23 @@ public class DynamicCheckoutAction extends CheckoutAction {
 
 
     @Override
-    public boolean checkout(FilePath workspace, TaskListener listener) 
-	        throws IOException, InterruptedException, ClearToolError 
-	{
+    public boolean checkout(FilePath workspace, TaskListener listener)
+            throws IOException, InterruptedException, ClearToolError
+    {
         boolean viewExists = false, createView = false;
-        
+
         logger.log("Fetching view info...");
         try {
             viewExists = cleartool.getViewInfo(view);
         } catch (ClearToolError cte) {
-            /* the server hosting the view was not reachable 
-             * we consider that the view already exists 
+            /* the server hosting the view was not reachable
+             * we consider that the view already exists
              * therefore, this view tag cannot be used */
             throw new ClearToolError("The view tag : " + view + " is already in use"
                     + " but the view's host cannot be reached,"
                     + " please use another view tag.", cte);
         }
-        
+
         if (viewExists) {
             if (!useUpdate) {
                 logger.log("Deleting old view...");
@@ -81,31 +82,35 @@ public class DynamicCheckoutAction extends CheckoutAction {
         } else {
             createView = true;
         }
-        
+
         if (createView) {
             logger.log("Creating dynamic view: " + view + "...");
             cleartool.mkview(view, stgloc, cleartool.getEnv().expand(mkViewOptionalParams));
         }
-    	
-	    logger.log(String.format("Starting view: %s...", view));
+
+        logger.log(String.format("Starting view: %s...", view));
         cleartool.startView(view);
-        
+
         if (!doNotUpdateConfigSpec) {
             logger.log("Searching for changes in config spec...");
-            
+
             // resolution of variables in the configspec
-            String jobConfSpec = cleartool.getEnv().expand(configSpec);
-            
-            String viewConfigSpec = cleartool.catcs(view);
-            if (configSpecChanged(viewConfigSpec, jobConfSpec)) {
+            ConfigSpec jobConfSpec = new ConfigSpec(cleartool.getEnv().expand(configSpec));
+            ConfigSpec viewConfigSpec = new ConfigSpec(cleartool.catcs(view));
+
+            // we can ignore load rules in dynamic views
+            jobConfSpec.removeLoadRules();
+            viewConfigSpec.removeLoadRules();
+
+            if (!viewConfigSpec.equals(jobConfSpec)) {
                 logger.log("Updating config spec...");
-                cleartool.setcs(view, jobConfSpec);
+                cleartool.setcs(view, jobConfSpec.toString());
             } else {
                 logger.log("No changes in config spec, updating view...");
                 cleartool.update(view);
             }
         }
-        
+
         return true;
     }
 
