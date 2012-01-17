@@ -51,67 +51,50 @@ import java.util.List;
 import org.kohsuke.stapler.DataBoundConstructor;
 
 /**
- * SCM for ClearCaseUCM. This SCM will create a UCM view from a and apply a list
- * of load rules to it.
+ * SCM for ClearCaseUCM. This SCM will create a UCM view from a and apply a list of load rules to
+ * it.
  */
 public class ClearCaseUcmSCM extends AbstractClearCaseSCM {
 
     /*******************************
      **** CONSTANTS ****************
      *******************************/
-    
+
     @Extension
-    public static final ClearCaseUcmSCMDescriptor 
-                                    UCM_DESCRIPTOR = new ClearCaseUcmSCMDescriptor();
-    
+    public static final ClearCaseUcmSCMDescriptor UCM_DESCRIPTOR = new ClearCaseUcmSCMDescriptor();
+
     /*******************************
      **** FIELDS *******************
      *******************************/
     private static final String CLEARCASE_STREAM_ENVSTR = "CLEARCASE_STREAM";
-    
+
     private final String stream;
-	private transient String resolvedStreamName;
-	private transient Stream streamObj;
+    private transient String resolvedStreamName;
+    private transient Stream streamObj;
 
     /*******************************
      **** CONSTRUCTOR **************
      *******************************/
 
-	@DataBoundConstructor
-	public ClearCaseUcmSCM(String viewName, 
-	                       String mkviewOptionalParam,
-	                       boolean filteringOutDestroySubBranchEvent, 
-	                       boolean useUpdate, 
-	                       String excludedRegions,
-	                       String loadRules, 
-	                       boolean useDynamicView, 
-	                       String viewDrive, 
-	                       int multiSitePollBuffer,
-	                       String clearcaseConfig,
-	                       boolean doNotUpdateConfigSpec,
-	                       String customWorkspace,
-	                       
-	                       String stream) {
-	    super(viewName, 
-	          mkviewOptionalParam, 
-	          filteringOutDestroySubBranchEvent, 
-	          useUpdate, 
-	          excludedRegions,
-	          loadRules, 
-	          useDynamicView, 
-	          viewDrive, 
-	          multiSitePollBuffer,
-	          clearcaseConfig,
-	          doNotUpdateConfigSpec,
-	          customWorkspace);
-	    
-	    this.stream = shortenStreamName(stream);
-	}
-	
+    @DataBoundConstructor
+    public ClearCaseUcmSCM(String viewName, String mkviewOptionalParam,
+            boolean filteringOutDestroySubBranchEvent, boolean useUpdate, String excludedRegions,
+            String loadRules, boolean useDynamicView, String viewDrive, int multiSitePollBuffer,
+            String clearcaseConfig, boolean doNotUpdateConfigSpec, String customWorkspace,
+
+            String stream)
+    {
+        super(viewName, mkviewOptionalParam, filteringOutDestroySubBranchEvent, useUpdate,
+                excludedRegions, loadRules, useDynamicView, viewDrive, multiSitePollBuffer,
+                clearcaseConfig, doNotUpdateConfigSpec, customWorkspace);
+
+        this.stream = shortenStreamName(stream);
+    }
+
     /*******************************
      **** OVERRIDE *****************
      *******************************/
-	
+
     /** overrides {@link hudson.scm.SCM#getDescriptor()} */
     @Override
     public ClearCaseUcmSCMDescriptor getDescriptor() {
@@ -123,53 +106,55 @@ public class ClearCaseUcmSCM extends AbstractClearCaseSCM {
     public ChangeLogParser createChangeLogParser() {
         return new UcmChangeLogParser();
     }
-    
-	/** overrides {@link AbstractClearCaseSCM#publishEnvVars()} */
-    @Override
-	public void publishEnvVars(FilePath workspace, EnvVars env) {
-	    super.publishEnvVars(workspace, env);
-		if (workspace != null && getResolvedStreamName() != null){
-            env.put(CLEARCASE_STREAM_ENVSTR, getResolvedStreamName());
-		}
-	}
 
-	/** implementation of abstract method {@link AbstractClearCaseSCM#getBranchNames()} */
-	@Override
-	public List<String> getBranchNames() {
-	    List<String> branchNames = new ArrayList<String>();
-	    String branch;
-	    if (!this.resolvedStreamName.equals(this.stream)){
-	        branch = this.resolvedStreamName;
-	    } else {
-	        branch = this.stream;
-	    }
-	    if (branch.contains("@")) {
+    /** overrides {@link AbstractClearCaseSCM#publishEnvVars()} */
+    @Override
+    public void publishEnvVars(FilePath workspace, EnvVars env) {
+        super.publishEnvVars(workspace, env);
+        if (workspace != null && getResolvedStreamName() != null) {
+            env.put(CLEARCASE_STREAM_ENVSTR, getResolvedStreamName());
+        }
+    }
+
+    /** implementation of abstract method {@link AbstractClearCaseSCM#getBranchNames()} */
+    @Override
+    public List<String> getBranchNames() {
+        List<String> branchNames = new ArrayList<String>();
+        String branch;
+        if (!this.resolvedStreamName.equals(this.stream)) {
+            branch = this.resolvedStreamName;
+        } else {
+            branch = this.stream;
+        }
+        if (branch.contains("@")) {
             branchNames.add(branch.split("@")[0]);
         }
-		return branchNames;
-	}
+        return branchNames;
+    }
 
-	/** implementation of abstract method {@link AbstractClearCaseSCM#createHistoryAction()} */
+    /** implementation of abstract method {@link AbstractClearCaseSCM#createHistoryAction()} */
     @Override
-	protected HistoryAction createHistoryAction(ClearTool ct) {
+    protected HistoryAction createHistoryAction(ClearTool ct) {
         UcmHistoryAction action = new UcmHistoryAction(ct, this.configureFilters(ct));
 
         action.setExtendedViewPath(getExtendedViewPath(ct.getWorkspace()));
-        
+
         return action;
     }
-    
+
     /** implementation of abstract method {@link AbstractClearCaseSCM#createCheckOutAction()} */
     @Override
     protected CheckoutAction createCheckoutAction(ClearTool ct, ClearCaseLogger logger, View view,
-            String stgloc) {
+            String stgloc)
+    {
         CheckoutAction action;
         if (isUseDynamicView()) {
-            action = new UcmDynamicCheckoutAction(ct, logger, view, stgloc, getMkviewOptionalParam(), 
-                    isUseUpdate(), isDoNotUpdateConfigSpec());
+            action = new UcmDynamicCheckoutAction(ct, logger, view, stgloc,
+                    getMkviewOptionalParam(), isUseUpdate(), isDoNotUpdateConfigSpec(),
+                    ClearCaseBaseSCM.BASE_DESCRIPTOR.getTimeShift());
         } else {
-            action = new UcmSnapshotCheckoutAction(ct, logger, view, stgloc, getMkviewOptionalParam(),
-                    isUseUpdate(), getViewPaths(ct.getWorkspace()));
+            action = new UcmSnapshotCheckoutAction(ct, logger, view, stgloc,
+                    getMkviewOptionalParam(), isUseUpdate(), getViewPaths(ct.getWorkspace()));
         }
         return action;
     }
@@ -181,22 +166,22 @@ public class ClearCaseUcmSCM extends AbstractClearCaseSCM {
         return new View(viewTag, streamObj, isUseDynamicView());
     }
 
-
     /** implementation of abstract method {@link AbstractClearCaseSCM#getViewPathsForLSHistory()} */
     @Override
-    protected List<String> getViewPathsForLSHistory(ClearTool ct) throws IOException, 
-            InterruptedException, ClearToolError {
-        
+    protected List<String> getViewPathsForLSHistory(ClearTool ct) throws IOException,
+            InterruptedException, ClearToolError
+    {
+
         List<String> viewPaths = getViewPaths(ct.getWorkspace());
         List<String> viewPathsForLSHistory = new ArrayList<String>();
         List<String> rwComponentPaths = new ArrayList<String>();
-        
+
         if (streamObj != null) {
             for (Component comp : ct.getRWComponents(streamObj)) {
                 rwComponentPaths.add(ct.getComponentRootPath(comp));
             }
         }
-        
+
         for (String path : viewPaths) {
             for (String componentPath : rwComponentPaths) {
                 if (path.startsWith(componentPath)) {
@@ -205,44 +190,44 @@ public class ClearCaseUcmSCM extends AbstractClearCaseSCM {
                 }
             }
         }
-        
+
         return viewPathsForLSHistory;
     }
-    
-    
+
     /*******************************
      **** UTILS ********************
      *******************************/
-    
+
     private String shortenStreamName(String longStream) {
         if (longStream.startsWith("stream:")) {
             return longStream.substring("stream:".length());
         }
         return longStream;
     }
-    
+
     @Override
     protected void publishBuildVariables(AbstractBuild<?, ?> build) {
         super.publishBuildVariables(build);
         List<StringParameterValue> parameters = Tools.getCCParameters(build);
         if (getResolvedStreamName() != null) {
-            parameters.add(new StringParameterValue(CLEARCASE_STREAM_ENVSTR, getResolvedStreamName()));
+            parameters.add(new StringParameterValue(CLEARCASE_STREAM_ENVSTR,
+                    getResolvedStreamName()));
         }
     }
 
     /*******************************
      **** GETTERS ******************
      *******************************/
-    
+
     public String getStream() {
         return stream;
     }
-    
-    public String getResolvedStreamName(){
+
+    public String getResolvedStreamName() {
         if (resolvedStreamName == null && env != null) {
             resolvedStreamName = env.expand(stream);
         }
         return resolvedStreamName;
     }
-    
+
 }

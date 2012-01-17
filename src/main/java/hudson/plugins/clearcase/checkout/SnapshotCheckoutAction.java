@@ -28,15 +28,15 @@ import hudson.FilePath;
 import hudson.model.TaskListener;
 import hudson.plugins.clearcase.cleartool.ClearTool;
 import hudson.plugins.clearcase.log.ClearCaseLogger;
+import hudson.plugins.clearcase.objects.ConfigSpec;
 import hudson.plugins.clearcase.objects.View;
 import hudson.plugins.clearcase.util.ClearToolError;
+import hudson.plugins.clearcase.util.Tools;
 
 import java.io.IOException;
 import java.util.List;
 
-/**
- * Check out action that will check out files into a snapshot view.
- */
+
 public class SnapshotCheckoutAction extends CheckoutAction {
 
     // optional fields for snapshot views
@@ -62,18 +62,19 @@ public class SnapshotCheckoutAction extends CheckoutAction {
 	    String oldViewUuid = "null";
 	    createView = false;
 	    
+	    View existingView = new View(view.getName());
         logger.log("Fetching view info...");
         try {
-            viewRegistered = cleartool.getViewInfo(view);
+            viewRegistered = cleartool.getViewInfo(existingView);
         } catch (ClearToolError cte) {
             /* the server hosting the view was not reachable 
              * we consider that the view is registered */ 
             viewRegistered = true;
         }
-        viewFolderExists = workspace.child(view.getName()).exists();
+        viewFolderExists = workspace.child(existingView.getName()).exists();
         if (viewFolderExists) {
             try {
-                oldViewUuid = cleartool.getSnapshotViewUuid(workspace.child(view.getName()));
+                oldViewUuid = cleartool.getSnapshotViewUuid(workspace.child(existingView.getName()));
             } catch (Exception e) {
                 /* either the view folder in the workspace does not exists,
                  * either the view.dat file could not be found in the view folder 
@@ -83,24 +84,24 @@ public class SnapshotCheckoutAction extends CheckoutAction {
         }
         viewExists = viewRegistered && oldViewUuid.equals(view.getUuid());
         
-        String jobConfSpec = makeNewConfigSpec(configSpec, loadRules);
-        // resolution of variables in the configspec
-        jobConfSpec = cleartool.getEnv().expand(jobConfSpec);
+        
+        ConfigSpec jobConfSpec = new ConfigSpec(cleartool.getEnv().expand(configSpec));
+        jobConfSpec.replaceLoadRules(loadRules, Tools.isWindows(workspace));
         
         if (viewExists) {
             if (useUpdate) {
                 logger.log("Searching for changes in config spec...");
-                String viewConfigSpec = cleartool.catcs(view).trim();
-                if (configSpecChanged(jobConfSpec, viewConfigSpec)){
-                    logger.log("Config spec has changed. Updating view...");
-                    cleartool.setcs(view, jobConfSpec);
+                ConfigSpec viewConfigSpec = new ConfigSpec(cleartool.catcs(existingView).trim());
+                if (jobConfSpec.equals(viewConfigSpec)){
+                	logger.log("No changes in config spec. Updating view...");
+                	cleartool.update(existingView);
                 } else {
-                    logger.log("No changes in config spec. Updating view...");
-                    cleartool.update(view);
+                	logger.log("Config spec has changed. Updating view...");
+                	cleartool.setcs(existingView, jobConfSpec.getValue());
                 }
             } else {
                 logger.log("Deleting old view...");
-                cleartool.rmview(view);
+                cleartool.rmview(existingView);
                 createView = true;
             }
         } else {
@@ -117,10 +118,10 @@ public class SnapshotCheckoutAction extends CheckoutAction {
         }
         
         if (createView) {
-            logger.log(String.format("Creating view: %s...", view.getName()));
+            logger.log("Creating view: " + view + "...");
             cleartool.mkview(view, stgloc, cleartool.getEnv().expand(mkViewOptionalParams));
             logger.log("Setting config spec & updating view...");
-            cleartool.setcs(view, jobConfSpec);
+            cleartool.setcs(view, jobConfSpec.getValue());
         }
         
         return true;

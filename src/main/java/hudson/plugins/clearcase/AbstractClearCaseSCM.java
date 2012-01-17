@@ -69,6 +69,7 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.logging.Level;
@@ -92,6 +93,7 @@ public abstract class AbstractClearCaseSCM extends SCM {
     public static final String CLEARCASE_VIEWNAME_ENVSTR = "CLEARCASE_VIEWNAME";
     public static final String CLEARCASE_VIEWPATH_ENVSTR = "CLEARCASE_VIEWPATH";
     public static final String ORIGINAL_WORKSPACE_ENVSTR = "ORIGINAL_WORKSPACE";
+
     
     /*******************************
      **** FIELDS *******************
@@ -102,6 +104,7 @@ public abstract class AbstractClearCaseSCM extends SCM {
     private transient List<String> lsHistoryPaths;
     protected transient View view;
     private transient FilePath originalWorkspace;
+    private transient String hostName;
 
     private final boolean useDynamicView;
     private final String viewDrive;
@@ -171,19 +174,6 @@ public abstract class AbstractClearCaseSCM extends SCM {
             InterruptedException
     {
         try {
-            /* In this plugin, the commands are displayed in a separate console "cleartool output"
-             * because cleartool gets sometimes very verbose and it pollutes the build log.
-             * 
-             * By default, Hudson prints every command invoked in the console no matter 
-             * what the user wants. This is done through the getListener().getLogger().printLn() 
-             * method from the Launcher class. 
-             * 
-             * As there is no way to modify this behaviour, I had to create a new launcher 
-             * with a NULL TaskListener so that when Hudson prints something, it goes to 
-             * the trash instead of poping in the middle of the build log */
-            Launcher launcher = Executor.currentExecutor().getOwner().getNode().createLauncher(
-                    TaskListener.NULL);
-            
             File ctLogFile = ClearToolLogFile.getCleartoolLogFile(build);
             ClearCaseLogger logger = new ClearCaseLogger(listener, ctLogFile);
             
@@ -191,6 +181,7 @@ public abstract class AbstractClearCaseSCM extends SCM {
             logger.log("### Begin source code retrieval ###");
 
             setEnv(build.getEnvironment(listener));
+            this.hostName = Tools.getHostName(workspace);
             
             // resolves the env variables and sets the normalizedViewName
             publishEnvVars(workspace, getEnv());
@@ -216,14 +207,13 @@ public abstract class AbstractClearCaseSCM extends SCM {
             view.setViewPath(getExtendedViewPath(workspace));
             
             ClearTool cleartool = createClearTool(config.getCleartoolExe(), workspace, build
-                    .getBuiltOn().getRootPath(), launcher, env, ctLogFile);
+                    .getBuiltOn().getRootPath(), env, ctLogFile, null);
 
             CheckoutAction checkoutAction = createCheckoutAction(cleartool, logger, view, storageLocation);
             
-            
             // Checkout source files
             checkoutAction.checkout(workspace, listener);
-            
+
             publishBuildVariables(build);
             
             /* This is a nasty hack for allowing other plugins 
@@ -251,14 +241,13 @@ public abstract class AbstractClearCaseSCM extends SCM {
                 
                 /* resolve variables and relative paths */
                 String customWorkspace = env.expand(this.customWorkspace);
-                customWorkspace = Tools.convertPathForOS(customWorkspace, Tools.isWindows(workspace));
-                
                 if (!new File(customWorkspace).isAbsolute()) {
                     // relative path, we resolve it against the root of the view
                     customWorkspace = Tools.joinPaths(env.get(CLEARCASE_VIEWPATH_ENVSTR), 
                             customWorkspace, Tools.fileSep(workspace));
                 }
                 
+                customWorkspace = Tools.convertPathForOS(customWorkspace, Tools.isWindows(workspace));
                 /* Then, modify the workspace of the build so that 
                  * the other plugins can use our value. */
                 workspaceField.set(build, customWorkspace);
@@ -270,7 +259,6 @@ public abstract class AbstractClearCaseSCM extends SCM {
             List<String> pathsForLsHistory = getLsHistoryPaths(cleartool);
             if (!pathsForLsHistory.isEmpty()) {
                 HistoryAction historyAction = createHistoryAction(cleartool);
-//                SaveChangeLogAction saveChangeLogAction = createSaveChangeLogAction(cleartool);
                 
                 // Gather change log
                 ClearCaseChangeLogSet<? extends ChangeLogSet.Entry> changes = null;
@@ -285,8 +273,7 @@ public abstract class AbstractClearCaseSCM extends SCM {
                     lastBuildTime = new Date(lastBuildMilliSecs);
 
                     String sinceStr = Tools.fmtDuration(System.currentTimeMillis() - lastBuildMilliSecs);
-                    logger.log("Retrieving changes since last build (" + sinceStr 
-                            + ")...");
+                    logger.log("Retrieving changes since last build (" + sinceStr + ")...");
                     
                     changes = historyAction.getChanges(build, lastBuildTime, view,
                             getBranchNames(), getLsHistoryPaths(cleartool));
@@ -357,16 +344,13 @@ public abstract class AbstractClearCaseSCM extends SCM {
     public boolean processWorkspaceBeforeDeletion(AbstractProject<?, ?> project,
             FilePath workspace, Node node) throws IOException, InterruptedException 
     {
-        if (this.useDynamicView) {
-            return true;
-        }
-        
-        boolean isCustomWorkspace = false;
+        boolean isHudsonCustomWorkspace = false;
+        boolean allowDelete = true;
         Logger logger = Logger.getLogger(this.getClass().getName());
         
         if (project.getRootProject() instanceof FreeStyleProject){
             FreeStyleProject free = (FreeStyleProject) project.getRootProject();
-            isCustomWorkspace = free.getCustomWorkspace() != null;
+            isHudsonCustomWorkspace = free.getCustomWorkspace() != null;
         }
         /* Robin Jarry 2010-01-20
          *
@@ -376,11 +360,13 @@ public abstract class AbstractClearCaseSCM extends SCM {
          * - if the command returns an error, it's not a view
          * - else it is a view, call the "rmview -force <dir_name>"
          *
+         * ############################
          * Robin Jarry 2010-10-11
          * 
          * Changed the algorithm so that it scans all the past builds, 
          * therefore, cleaning views on slaves too.
          * 
+         * ############################
          * Robin Jarry 2011-06-28
          * 
          * This method originally tried to perform 'cleartool rmview' on all folders present
@@ -393,30 +379,29 @@ public abstract class AbstractClearCaseSCM extends SCM {
          * Now, we will get the view tag from the build, and if the view associated to the 
          * tag is snapshot, we remove it by its tag.
          */
+
+        /* we must unregister all snapshot views created on all builds */
+        for (AbstractBuild<?, ?> build : project.getBuilds()) {
+            removeBuildView(build, logger);
+        }
         
-        if (isCustomWorkspace){
+        if (isHudsonCustomWorkspace){
             logger.log(Level.WARNING, "The project " + project.getName() + 
                     " uses a custom workspace location. Its workspace cannot be deleted.");
-            // if the job has been configured to use a custom workspace, we forbid its deletion 
-            return false;
-        } else {
-            /* 
-             * "processWorkspaceBeforeDeletion" is being called on the master, 
-             * we must unregister all snapshot views created on all builds 
-             */
-            for (AbstractBuild<?, ?> build : project.getBuilds()) {
-                removeBuildView(build, logger);
-            }
-            /*
-             * There may be several views with different tags in the same workspace
-             * (created by different builds) So we must make sure that all the views
-             * are properly removed *BEFORE* deleting the original workspace directory. 
-             */
+            /* if the job has been configured to use a custom workspace, we forbid its deletion */ 
+            allowDelete = false;
+        } else if (customWorkspace != null) {
+            /* The SCM custom workspace option modifies the actual workspace, 
+             * after all the views are removed, we must delete the original workspace */
             for (AbstractBuild<?, ?> build : project.getBuilds()) {
                 cleanupOriginalWorkspace(build, logger);
             }
-            return true;
+            /* Always return false here, if not, Hudson/Jenkins will try to delete either a 
+             * non-existing path (snapshot views) or a read-only path (dynamic views) */
+            allowDelete = false;
         }
+        
+        return allowDelete;
     }
 
 
@@ -490,10 +475,25 @@ public abstract class AbstractClearCaseSCM extends SCM {
     protected abstract View createView(String viewTag);
     
     public ClearTool createClearTool(String executable, FilePath workspace, FilePath nodeRoot,
-            Launcher launcher, EnvVars env, File logFile)
+            EnvVars env, File logFile, Launcher launcher)
     {
-        CTLauncher ctLauncher = new CTLauncher(executable, workspace, nodeRoot, launcher, env,
-                logFile);
+        /* In this plugin, the commands are displayed in a separate console "cleartool output"
+         * because cleartool gets sometimes very verbose and it pollutes the build log.
+         * 
+         * By default, Hudson prints every command invoked in the console no matter 
+         * what the user wants. This is done through the getListener().getLogger().printLn() 
+         * method from the Launcher class. 
+         * 
+         * As there is no way to modify this behaviour, I had to create a new launcher 
+         * with a NULL TaskListener so that when Hudson prints something, it goes to 
+         * the trash instead of poping in the middle of the build log */
+        if (launcher == null) {
+            launcher = Executor.currentExecutor().getOwner().getNode().createLauncher(
+                    TaskListener.NULL);
+        }
+        
+        CTLauncher ctLauncher = new CTLauncher(executable, workspace, nodeRoot, env, logFile, 
+                launcher);
         if (this.useDynamicView) {
             FilePath viewPath = new FilePath(workspace.getChannel(), this.viewDrive);
             return new ClearToolDynamic(ctLauncher, viewPath);
@@ -515,10 +515,13 @@ public abstract class AbstractClearCaseSCM extends SCM {
      */
     private String generateNormalizedViewName(EnvVars env) {
         String normViewName = env.expand(getViewName());
-        normViewName = normViewName.replaceAll("[\\s\\\\\\/:\\?\\*\\|]+", "_");
-        return normViewName;
+        if (this.hostName != null) {
+            normViewName = HOSTNAME_REX.matcher(normViewName).replaceAll(this.hostName);
+        }
+        return normViewName.replaceAll("[\\s\\\\\\/:\\?\\*\\|]+", "_");
     }
-    
+    private static final Pattern HOSTNAME_REX = Pattern.compile("\\$\\{(HOSTNAME|COMPUTERNAME)\\}",
+            Pattern.CASE_INSENSITIVE);
 
     protected List<Filter> configureFilters(ClearTool ct) {
         List<Filter> filters = new ArrayList<Filter>();
@@ -557,7 +560,9 @@ public abstract class AbstractClearCaseSCM extends SCM {
             throw new ClearToolError("No previous build has been found, " +
                 "please launch the build manually.");
         }
-        Date buildTime = lastBuild.getTimestamp().getTime();
+        Calendar buildTime = lastBuild.getTimestamp();
+        int shift = ClearCaseBaseSCM.BASE_DESCRIPTOR.getTimeShift() - getMultiSitePollBuffer();
+        buildTime.add(Calendar.SECOND, shift);
 
         CCParametersAction params = lastBuild.getAction(CCParametersAction.class);
         if (params == null) {
@@ -571,18 +576,13 @@ public abstract class AbstractClearCaseSCM extends SCM {
                 "please launch the build manually.");
         }
         
-        if (getMultiSitePollBuffer() != 0) {
-            long lastBuildMilliSecs = lastBuild.getTimestamp().getTimeInMillis();
-            buildTime = new Date(lastBuildMilliSecs - (1000 * 60 * getMultiSitePollBuffer()));
-        }
         EnvVars env = lastBuild.getEnvironment(listener);
         if (getEnv() == null) this.setEnv(env);
         
         String nodeName = Computer.currentComputer().getName();
         FilePath nodeRoot = Computer.currentComputer().getNode().getRootPath();
         ClearCaseConfiguration config = fetchClearCaseConfig(nodeName);
-        ClearTool ct = createClearTool(config.getCleartoolExe(), workspace, nodeRoot, 
-                launcher, env, null);
+        ClearTool ct = createClearTool(config.getCleartoolExe(), workspace, nodeRoot, env, null, launcher);
         HistoryAction historyAction = createHistoryAction(ct);
 
         View prevBuildView = createView(prevBuildViewName);
@@ -597,7 +597,10 @@ public abstract class AbstractClearCaseSCM extends SCM {
                 		"please launch the build manually.");
             }
         }
-        return historyAction.pollChanges(buildTime, prevBuildView, getBranchNames(), getViewPaths(workspace));
+        ct.update(prevBuildView);
+        
+        return historyAction.pollChanges(buildTime.getTime(), prevBuildView, getBranchNames(), 
+                getViewPaths(workspace));
     }
     
     /**
@@ -834,9 +837,8 @@ public abstract class AbstractClearCaseSCM extends SCM {
                 Node node = build.getBuiltOn();
                 EnvVars env = build.getEnvironment(TaskListener.NULL);
                 ClearCaseConfiguration config = fetchClearCaseConfig(node.getNodeName());
-                Launcher launch = node.createLauncher(TaskListener.NULL);
                 ClearTool ct = createClearTool(config.getCleartoolExe(), node.getRootPath(),
-                        node.getRootPath(), launch, env, null);
+                        node.getRootPath(), env, null, null);
                 
                 View buildView = ct.getViewInfo(viewTag);
                 

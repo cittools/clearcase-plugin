@@ -28,17 +28,16 @@ import hudson.FilePath;
 import hudson.model.TaskListener;
 import hudson.plugins.clearcase.cleartool.ClearTool;
 import hudson.plugins.clearcase.log.ClearCaseLogger;
+import hudson.plugins.clearcase.objects.ConfigSpec;
 import hudson.plugins.clearcase.objects.Stream;
 import hudson.plugins.clearcase.objects.View;
 import hudson.plugins.clearcase.util.ClearToolError;
+import hudson.plugins.clearcase.util.Tools;
 
 import java.io.IOException;
 import java.util.List;
 
-/**
- * Check out action that will check out files into a UCM snapshot view. Checking
- * out the files will also update the load rules in the view.
- */
+
 public class UcmSnapshotCheckoutAction extends CheckoutAction {
 
     private final List<String> loadRules;
@@ -67,18 +66,19 @@ public class UcmSnapshotCheckoutAction extends CheckoutAction {
             throw new ClearToolError("The stream was not specified.");
         }
         
+        View existingView = new View(view.getName());
         logger.log("Fetching view info...");
         try {
-            viewRegistered = cleartool.getViewInfo(view);
+            viewRegistered = cleartool.getViewInfo(existingView);
         } catch (ClearToolError cte) {
             /* the server hosting the view was not reachable 
              * we consider that the view is registered */ 
             viewRegistered = true;
         }
-        viewFolderExists = workspace.child(view.getName()).exists();
+        viewFolderExists = workspace.child(existingView.getName()).exists();
         if (viewFolderExists) {
             try {
-                oldViewUuid = cleartool.getSnapshotViewUuid(workspace.child(view.getName()));
+                oldViewUuid = cleartool.getSnapshotViewUuid(workspace.child(existingView.getName()));
             } catch (Exception e) {
                 /* either the view folder in the workspace does not exists,
                  * either the view.dat file could not be found in the view folder 
@@ -91,7 +91,7 @@ public class UcmSnapshotCheckoutAction extends CheckoutAction {
         if (viewExists) {
             boolean correctStream = false;
             try {
-                Stream currentStream = cleartool.getStreamFromView(view);
+                Stream currentStream = cleartool.getStreamFromView(existingView);
                 correctStream = currentStream.equals(view.getStream());
                 if (!correctStream) {
                     logger.log("Stream configuration has changed.");
@@ -103,20 +103,19 @@ public class UcmSnapshotCheckoutAction extends CheckoutAction {
             if (useUpdate && correctStream) {
                 
                 logger.log("Searching for changes in load rules...");
-                String currentConfigSpec = cleartool.catcs(view);
-                List<String> configSpecLoadRules = extractLoadRules(currentConfigSpec);
+                ConfigSpec configSpec = new ConfigSpec(cleartool.catcs(existingView));
                 
-                if (loadRulesChanged(this.loadRules, configSpecLoadRules)) {
+                if (configSpec.loadRulesDiffer(this.loadRules)) {
                     logger.log("Load rules have changed. Updating view...");
-                    String newConfigSpec = makeNewConfigSpec(currentConfigSpec, this.loadRules);
-                    cleartool.setcs(view, newConfigSpec);
+                    configSpec.replaceLoadRules(this.loadRules, Tools.isWindows(workspace));
+                    cleartool.setcs(existingView, configSpec.getValue());
                 } else {
                     logger.log("No changes in load rules. Updating view...");
-                    cleartool.update(view);
+                    cleartool.update(existingView);
                 }
             } else {
                 logger.log("Deleting old view...");
-                cleartool.rmview(view);
+                cleartool.rmview(existingView);
                 createView = true;
             }
         } else {
@@ -134,10 +133,10 @@ public class UcmSnapshotCheckoutAction extends CheckoutAction {
         if (createView) {
             logger.log(String.format("Creating view: %s...", view.getName()));
             cleartool.mkview(view, stgloc, cleartool.getEnv().expand(mkViewOptionalParams));
-            String newConfigSpec = cleartool.catcs(view);
-            String configSpec = makeNewConfigSpec(newConfigSpec, this.loadRules);
+            ConfigSpec configSpec = new ConfigSpec(cleartool.catcs(view));
+            configSpec.replaceLoadRules(this.loadRules, Tools.isWindows(workspace));
             logger.log(String.format("Loading files from load rules..."));
-            cleartool.setcs(view, configSpec);
+            cleartool.setcs(view, configSpec.getValue());
         }
         
         return true;

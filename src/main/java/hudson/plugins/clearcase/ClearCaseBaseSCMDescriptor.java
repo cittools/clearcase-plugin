@@ -6,11 +6,11 @@ import hudson.EnvVars;
 import hudson.FilePath;
 import hudson.Functions;
 import hudson.Launcher;
-import hudson.Proc;
 import hudson.Launcher.ProcStarter;
+import hudson.Proc;
+import hudson.model.TaskListener;
 import hudson.model.Descriptor;
 import hudson.model.Hudson;
-import hudson.model.TaskListener;
 import hudson.plugins.clearcase.cleartool.CTLauncher;
 import hudson.plugins.clearcase.cleartool.ClearTool;
 import hudson.plugins.clearcase.cleartool.ClearToolSnapshot;
@@ -21,6 +21,7 @@ import hudson.util.FormValidation;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.Calendar;
 import java.util.List;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
@@ -37,12 +38,11 @@ import org.kohsuke.stapler.StaplerResponse;
 public class ClearCaseBaseSCMDescriptor extends SCMDescriptor<ClearCaseBaseSCM> {
 
     public static final String DEFAULT_CONFIG = "(Default)";
-    
-    
+
     /*******************************
      **** FIELDS *******************
      *******************************/
-    
+
     @CopyOnWrite
     private volatile String cleartoolExe = "cleartool";
     @CopyOnWrite
@@ -50,27 +50,29 @@ public class ClearCaseBaseSCMDescriptor extends SCMDescriptor<ClearCaseBaseSCM> 
     @CopyOnWrite
     private volatile String stgloc = "";
     @CopyOnWrite
+    private volatile int timeShift = 0;
+    @CopyOnWrite
     private volatile ClearCaseConfiguration[] configurations = new ClearCaseConfiguration[0];
-      
+
     /*******************************
      **** CONSTRUCTOR **************
      *******************************/
-    
+
     public ClearCaseBaseSCMDescriptor() {
         super(ClearCaseBaseSCM.class, null);
         load();
     }
-    
+
     /*******************************
      **** OVERRIDE *****************
      *******************************/
-    
+
     /** implements abstract method {@link Descriptor#getDisplayName()} */
     @Override
     public String getDisplayName() {
         return "Base ClearCase";
     }
-    
+
     /** overrides method {@link Descriptor#configure()} */
     @Override
     public boolean configure(StaplerRequest req, JSONObject json) throws FormException {
@@ -81,33 +83,32 @@ public class ClearCaseBaseSCMDescriptor extends SCMDescriptor<ClearCaseBaseSCM> 
             } else {
                 this.cleartoolExe = "cleartool";
             }
+            this.configurations = req.bindParametersToList(ClearCaseConfiguration.class, "cc.")
+                    .toArray(new ClearCaseConfiguration[0]);
+            this.stgloc = json.getString("stgloc");
         } catch (JSONException jex) {
             this.cleartoolExe = "cleartool";
+            this.stgloc = "";
+            this.configurations = new ClearCaseConfiguration[0];
         }
         try {
             this.changeLogMergeTimeWindow = json.getInt("changeLogMergeTimeWindow");
-        } catch (JSONException jex) {
+        } catch (JSONException e) {
             this.changeLogMergeTimeWindow = 5;
         }
         try {
-            this.stgloc = json.getString("stgloc");
-        } catch (JSONException jex) {
-            this.stgloc = "";
-        }
-        try {
-            this.configurations = req.bindParametersToList(
-                    ClearCaseConfiguration.class,"cc.").toArray(new ClearCaseConfiguration[0]);
-        } catch (JSONException jex) {
-            this.configurations = new ClearCaseConfiguration[0];
+            this.timeShift = json.getInt("timeShift");
+        } catch (JSONException e) {
+            this.timeShift = 0;
         }
         save();
         return true;
     }
-    
+
     /*******************************
      **** GETTERS ******************
      *******************************/
-    
+
     public int getChangeLogMergeTimeWindow() {
         return changeLogMergeTimeWindow;
     }
@@ -118,11 +119,15 @@ public class ClearCaseBaseSCMDescriptor extends SCMDescriptor<ClearCaseBaseSCM> 
         }
         return cleartoolExe;
     }
-    
+
     public String getStgloc() {
         return stgloc;
     }
-    
+
+    public int getTimeShift() {
+        return timeShift;
+    }
+
     public ClearCaseConfiguration[] getConfigurations() {
         return configurations;
     }
@@ -135,9 +140,10 @@ public class ClearCaseBaseSCMDescriptor extends SCMDescriptor<ClearCaseBaseSCM> 
                 }
             }
         }
-        return new ClearCaseConfiguration(DEFAULT_CONFIG, cleartoolExe, stgloc, changeLogMergeTimeWindow);
+        return new ClearCaseConfiguration(DEFAULT_CONFIG, cleartoolExe, stgloc,
+                changeLogMergeTimeWindow);
     }
-    
+
     /*******************************
      **** AJAX FIELD VALIDATORS ****
      *******************************/
@@ -147,38 +153,60 @@ public class ClearCaseBaseSCMDescriptor extends SCMDescriptor<ClearCaseBaseSCM> 
         String exe = fixEmptyAndTrim(value);
         return FormValidation.validateExecutable(exe);
     }
-    
+
     /** Checks if the storage location exists */
     public FormValidation doCheckStgloc(@QueryParameter String value) {
         String stgloc = fixEmptyAndTrim(value);
-        
+
         if (stgloc == null) {
             return FormValidation.ok();
         }
-        
-        Launcher launcher = Hudson.getInstance().createLauncher(TaskListener.NULL);
 
         FilePath hudsonRoot = Hudson.getInstance().getRootPath();
-        
-        CTLauncher ctLauncher = new CTLauncher(getCleartoolExe(), hudsonRoot, hudsonRoot, launcher,
-                new EnvVars(), null);
+        Launcher launcher = Hudson.getInstance().createLauncher(TaskListener.NULL);
+        CTLauncher ctLauncher = new CTLauncher(getCleartoolExe(), hudsonRoot, hudsonRoot,
+                new EnvVars(), null, launcher);
 
         ClearTool ct = new ClearToolSnapshot(ctLauncher);
 
         try {
             List<String> stglocations = ct.lsStgloc();
             if (!stglocations.contains(stgloc)) {
-                return FormValidation.error("Storage location not found. " +
-                		"Please provide one from the following list : " + stglocations);
+                return FormValidation.error("Storage location not found. "
+                        + "Please provide one from the following list : " + stglocations);
             } else {
                 return FormValidation.ok();
             }
         } catch (Exception e) {
             return FormValidation.ok();
         }
-        
+
     }
-    
+
+    /** Checks if timeShift is valid. */
+    public FormValidation doCheckTimeShift(@QueryParameter String value) {
+        String shift = fixEmptyAndTrim(value);
+        if (shift == null || shift.equals("0")) {
+            return FormValidation.ok();
+        } else {
+            try {
+                int timeShift = Integer.parseInt(shift);
+                String shiftDirection = "future";
+                if (timeShift < 0) {
+                    shiftDirection = "past";
+                }
+                timeShift = Math.abs(timeShift);
+                String timeStr = (timeShift / 60) + " min " + (timeShift % 60) + " sec";
+                String message = "Dynamic views will be \"frozen\" %s in the %s. "
+                        + "Note: it is currently %s on Hudson/Jenkins master computer.";
+                return FormValidation.warning(String.format(message, timeStr, shiftDirection,
+                        Calendar.getInstance().getTime()));
+            } catch (NumberFormatException e) {
+                return FormValidation.error(e.toString());
+            }
+        }
+    }
+
     /** Validates the view name */
     public FormValidation doCheckViewName(@QueryParameter String value) {
         String viewName = fixEmptyAndTrim(value);
@@ -190,7 +218,7 @@ public class ClearCaseBaseSCMDescriptor extends SCMDescriptor<ClearCaseBaseSCM> 
             return FormValidation.ok();
         }
     }
-   
+
     /** Validates the load rules */
     public FormValidation doCheckLoadRules(@QueryParameter String value) {
         if (fixEmptyAndTrim(value) == null) {
@@ -202,7 +230,7 @@ public class ClearCaseBaseSCMDescriptor extends SCMDescriptor<ClearCaseBaseSCM> 
 
     /** Validates the excludedRegions Regex */
     public FormValidation doCheckExcludedRegions(@QueryParameter String value) {
-        
+
         String v = fixEmptyAndTrim(value);
         if (v != null) {
             String[] regions = v.split("[\\r\\n]+");
@@ -219,7 +247,7 @@ public class ClearCaseBaseSCMDescriptor extends SCMDescriptor<ClearCaseBaseSCM> 
 
     /** Validates the config spec */
     public FormValidation doCheckConfigSpec(@QueryParameter String value) {
-        
+
         String v = fixEmptyAndTrim(value);
         if ((v == null) || (v.length() == 0)) {
             return FormValidation.error("Config Spec is mandatory");
@@ -240,23 +268,20 @@ public class ClearCaseBaseSCMDescriptor extends SCMDescriptor<ClearCaseBaseSCM> 
             return FormValidation.ok();
         }
     }
-    
+
     public FormValidation doCheckUseUpdate(@QueryParameter String value) {
         if ("true".equals(fixEmptyAndTrim(value))) {
-        	return FormValidation.ok();
+            return FormValidation.ok();
         } else {
-            return FormValidation.warning("If the view already exists, it will be deleted and re-created.");
+            return FormValidation
+                    .warning("If the view already exists, it will be deleted and re-created.");
         }
     }
-    
-    
-    
-    
-    
+
     /*******************************
      **** UTILITY METHODS **********
      *******************************/
-    
+
     public String getDefaultViewPattern() {
         if (Functions.isWindows()) {
             return "${COMPUTERNAME}_${JOB_NAME}_hudson";
@@ -264,7 +289,7 @@ public class ClearCaseBaseSCMDescriptor extends SCMDescriptor<ClearCaseBaseSCM> 
             return "${HOSTNAME}_${JOB_NAME}_hudson";
         }
     }
-    
+
     public String getDefaultViewRoot() {
         if (Functions.isWindows()) {
             return "M:\\";
@@ -272,10 +297,11 @@ public class ClearCaseBaseSCMDescriptor extends SCMDescriptor<ClearCaseBaseSCM> 
             return "/view";
         }
     }
-    
+
     /** Displays "cleartool version" for trouble shooting. */
     public void doVersion(StaplerRequest req, StaplerResponse rsp) throws IOException,
-            ServletException, InterruptedException {
+            ServletException, InterruptedException
+    {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try {
             ProcStarter starter = Hudson.getInstance().createLauncher(TaskListener.NULL).launch();
@@ -292,9 +318,10 @@ public class ClearCaseBaseSCMDescriptor extends SCMDescriptor<ClearCaseBaseSCM> 
             rsp.forward(this, "versionCheckError", req);
         }
     }
-    
+
     public void doListViews(StaplerRequest req, StaplerResponse rsp) throws IOException,
-            ServletException, InterruptedException {
+            ServletException, InterruptedException
+    {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         ProcStarter starter = Hudson.getInstance().createLauncher(TaskListener.NULL).launch();
         starter.cmds(new String[] { this.getCleartoolExe(), "lsview", "-short" });

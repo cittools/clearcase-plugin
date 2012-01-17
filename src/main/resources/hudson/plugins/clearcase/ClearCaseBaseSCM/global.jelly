@@ -24,71 +24,75 @@
     THE SOFTWARE.
 
 -->
-<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define"
+	xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
 	<f:section title="ClearCase">
 		<f:description>
 			<div align="right">
-				<a href="${rootURL}/scm/ClearCaseBaseSCM/version">${%checkCleartoolVersion}</a>
-  			</div>
-    	</f:description>
-    	
-        <f:block>
-        ${%defaultConfigs}<hr/>
-        </f:block>
+				<a href="${rootURL}/scm/ClearCaseBaseSCM/version">${%Check cleartool version}</a>
+			</div>
+		</f:description>
 
-    	<f:entry title="${%cleartoolExe}" field="cleartoolExe" >
-	    	<f:textbox />
-	  	</f:entry>
-	  	
-	  	<f:entry title="${%stgloc}" field="stgloc" >
-	  	    <f:textbox />
-	  	</f:entry>
+		<f:block>
+			${%Default Configuration}
+			<hr />
+		</f:block>
 
-		<f:entry title="${%changeLogMergeTimeWindow}" field="changeLogMergeTimeWindow" >
+		<f:entry title="${%Cleartool executable}" field="cleartoolExe">
 			<f:textbox />
 		</f:entry>
 
-        <f:block>
-        ${%customConfigs}<hr/>
-        </f:block>
+		<f:entry title="${%View storage location}" field="stgloc">
+			<f:textbox />
+		</f:entry>
 
-        <f:entry description="List of ClearCase Configurations">
-            <f:repeatable var="conf" items="${descriptor.configurations}">
-                <table width="100%">
-        
-					<f:entry title="Name">
-					    <f:textbox name="cc.name" 
-					               value="${conf.name}" 
-					               checkUrl="'${rootURL}/scm/ClearCaseBaseSCM/checkName?value='+escape(this.value)" />
+		<f:entry title="${%Time window for merging event records}" field="changeLogMergeTimeWindow">
+			<f:textbox />
+		</f:entry>
+
+		<f:entry title="${%Time shift with VOB servers}" field="timeShift">
+			<f:textbox />
+		</f:entry>
+
+		<f:block>
+			${%Custom Configurations}
+			<hr />
+		</f:block>
+
+		<f:entry description="List of ClearCase Configurations">
+			<f:repeatable var="conf" items="${descriptor.configurations}">
+				<table width="100%">
+
+					<f:entry title="${%Configuration Name}">
+						<f:textbox name="cc.name" value="${conf.name}"
+							checkUrl="'${rootURL}/scm/ClearCaseBaseSCM/checkName?value='+escape(this.value)" />
 					</f:entry>
-					
-					<f:entry title="${%cleartoolExe}">
-					    <f:textbox name="cc.cleartoolExe" 
-					               value="${conf.cleartoolExe}" 
-					               default="${descriptor.cleartoolExe}"
-					               checkUrl="'${rootURL}/scm/ClearCaseBaseSCM/checkCleartoolExe?value='+escape(this.value)" />
+
+					<f:entry title="${%Cleartool executable}">
+						<f:textbox name="cc.cleartoolExe" value="${conf.cleartoolExe}"
+							default="${descriptor.cleartoolExe}"
+							checkUrl="'${rootURL}/scm/ClearCaseBaseSCM/checkCleartoolExe?value='+escape(this.value)" />
 					</f:entry>
-					
-					<f:entry title="${%stgloc}">
-					    <f:textbox name="cc.stgloc" 
-					               value="${conf.stgloc}" 
-					               default="${descriptor.stgloc}"
-					               checkUrl="'${rootURL}/scm/ClearCaseBaseSCM/checkStgloc?value='+escape(this.value)" />
+
+					<f:entry title="${%View storage location}">
+						<f:textbox name="cc.stgloc" value="${conf.stgloc}"
+							default="${descriptor.stgloc}"
+							checkUrl="'${rootURL}/scm/ClearCaseBaseSCM/checkStgloc?value='+escape(this.value)" />
 					</f:entry>
-					
-					<f:entry title="${%changeLogMergeTimeWindow}">
-					    <f:textbox name="cc.changeLogMergeTimeWindow" 
-					               value="${conf.changeLogMergeTimeWindow}" 
-					               default="${descriptor.changeLogMergeTimeWindow}" />
+
+					<f:entry title="${%Time window for merging event records}">
+						<f:textbox name="cc.changeLogMergeTimeWindow" value="${conf.changeLogMergeTimeWindow}"
+							default="${descriptor.changeLogMergeTimeWindow}" />
 					</f:entry>
-					
+
 					<f:entry title="">
-					    <div align="right">
-					        <f:repeatableDeleteButton />
-					    </div>
+						<div align="right">
+							<f:repeatableDeleteButton />
+						</div>
 					</f:entry>
-                </table>
-            </f:repeatable>
-        </f:entry>
- 	</f:section>
+				</table>
+			</f:repeatable>
+		</f:entry>
+
+	</f:section>
 </j:jelly>

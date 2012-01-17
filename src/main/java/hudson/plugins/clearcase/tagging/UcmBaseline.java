@@ -29,20 +29,11 @@ import hudson.Extension;
 import hudson.FilePath;
 import hudson.Launcher;
 import hudson.Util;
-import hudson.XmlFile;
 import hudson.model.BuildListener;
-import hudson.model.Descriptor;
 import hudson.model.Result;
-import hudson.model.Saveable;
-import hudson.model.TaskListener;
 import hudson.model.AbstractBuild;
-import hudson.model.AbstractProject;
 import hudson.model.Computer;
-import hudson.model.Executor;
-import hudson.model.Project;
 import hudson.model.StringParameterValue;
-import hudson.model.listeners.RunListener;
-import hudson.model.listeners.SaveableListener;
 import hudson.plugins.clearcase.ClearCaseUcmSCM;
 import hudson.plugins.clearcase.cleartool.ClearTool;
 import hudson.plugins.clearcase.log.ClearCaseLogger;
@@ -57,21 +48,13 @@ import hudson.plugins.clearcase.objects.Stream.LockState;
 import hudson.plugins.clearcase.objects.View;
 import hudson.plugins.clearcase.util.ClearToolError;
 import hudson.plugins.clearcase.util.Tools;
-import hudson.tasks.BuildStepDescriptor;
 import hudson.tasks.BuildStepMonitor;
-import hudson.tasks.Builder;
 import hudson.tasks.Notifier;
-import hudson.util.CopyOnWriteList;
-import hudson.util.DescribableList;
-import hudson.util.PersistedList;
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
-import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -127,6 +110,16 @@ import org.kohsuke.stapler.DataBoundConstructor;
  *          or if someone happends to save the project <b>during the build</b> ({@link OnSaveListener})</li>
  *      </ul>
  *   </li>
+ *   <li><b>2011-11-29:</b> 
+ *      <ul>
+ *          <li>The baseline creation is now made after the build. Thanks to the "-time" rules 
+ *          that are added in the config spec, we are 100% sure that the view contents have not 
+ *          changed during the build. This allows to remove all the hacking made arround dummy
+ *          builds steps.</li>
+ *          <li>The "Lock Stream" feature has been removed. For the same reasons as above.</li>
+ *          <li>Added an option to skip the baseline creation step if the build has failed.</li>
+ *      </ul>
+ *   </li>
  * </ul>
  *   
  * @author Peter Liljenberg
@@ -147,14 +140,13 @@ public class UcmBaseline extends Notifier {
      ** FIELDS **
      ************/
     // transient fields
-    private transient List<Baseline> baselines = new ArrayList<Baseline>();
-    private transient boolean streamSuccessfullyLocked = false;
+    private transient boolean lockStream = false; //@deprecated
     
     // serialized fields
     private final String namePattern; 
     private final String commentPattern;
     
-    private final boolean lockStream;
+    private final boolean skipOnBuildFailure;
     private final boolean recommend;
     private final boolean fullBaseline;
     private final boolean identical;
@@ -170,7 +162,8 @@ public class UcmBaseline extends Notifier {
     @DataBoundConstructor
     public UcmBaseline(String namePattern,
                        String commentPattern,
-                       boolean lockStream,
+                       //boolean lockStream, @deprecated
+                       boolean skipOnBuildFailure,
                        boolean recommend,
                        boolean fullBaseline,
                        boolean identical,
@@ -181,7 +174,8 @@ public class UcmBaseline extends Notifier {
         super();
         this.namePattern = namePattern;
         this.commentPattern = commentPattern;
-        this.lockStream = lockStream;
+        //this.lockStream = lockStream; @deprecated
+        this.skipOnBuildFailure = skipOnBuildFailure;
         this.recommend = recommend;
         this.fullBaseline = fullBaseline;
         this.identical = identical;
@@ -214,58 +208,56 @@ public class UcmBaseline extends Notifier {
      ******************/ 
     /** {@inheritDoc} **/
     @Override
-    public boolean prebuild(AbstractBuild<?, ?> build, BuildListener listener) {
-        try {
-            Project<?, ?> project = (Project<?, ?>) build.getProject();
-            insertBaselineBuildStep(project);
-            try {
-                File ctLogFile = ClearToolLogFile.getCleartoolLogFile(build);
-                ClearCaseLogger logger = new ClearCaseLogger(listener, ctLogFile);
-                logger.log("Delayed the baseline creation step *AFTER* the build wrappers.");
-            } catch (IOException e1) {
-                /* pass */
-            }
-            return true;
-        } catch (Exception e) {
-            /* This is an AbstractMavenProject or a MatrixProject
-             * therefore, we cannot access the builders field 
-             * The baseline creation step will take place now */
-            try {
-                File ctLogFile = ClearToolLogFile.getCleartoolLogFile(build);
-                ClearCaseLogger logger = new ClearCaseLogger(listener, ctLogFile);
-                logger.log("Could not schedule the baseline creation step *AFTER* the build wrappers. " +
-                		"Baseline creation will take place *BEFORE* the build wrappers.");
-            } catch (IOException e1) {
-                /* pass */
-            }
-            return doPreBuild(build, listener);
-        }
-    }
+    public boolean perform(AbstractBuild<?, ?> build, Launcher l, BuildListener listener)
+            throws InterruptedException, IOException {
 
-
-    /**
-     * The work of this method was originally done by the {@link #prebuild(AbstractBuild, BuildListener)}
-     * method. It has been externalized to allow delaying the creation of the baselines after the
-     * build wrappers are executed.
-     *  
-     * @author Robin Jarry
-     * @since 2.5.0
-     */
-    private boolean doPreBuild(AbstractBuild<?, ?> build, BuildListener listener) {
         if (build.getProject().getScm() instanceof ClearCaseUcmSCM) {
             try {
-                File ctLogFile = ClearToolLogFile.getCleartoolLogFile(build);
-                ClearCaseLogger logger = new ClearCaseLogger(listener, ctLogFile);
-                logger.log("### Begin Baseline creation ###");
-
-                /////// BEGIN VARIABLE RESOLUTION /////////////////////////////////////////////////
+            	File ctLogFile = ClearToolLogFile.getCleartoolLogFile(build);
+            	ClearCaseLogger logger = new ClearCaseLogger(listener, ctLogFile);
+            	logger.log("### Begin Baseline creation/promotion ###");
+            	boolean buildOK = build.getResult().equals(Result.SUCCESS) 
+            	        || build.getResult().equals(Result.UNSTABLE);
+            	
+            	if (!buildOK && this.skipOnBuildFailure) {
+            	    logger.log("Build result is " + build.getResult() + ". " + 
+            	                "Skipping the baseline creation/promotion step.");
+            	    return false;
+            	}
+            	
+            	///// init variables //////////////////////////////////////////////////////////////
                 ClearCaseUcmSCM scm = (ClearCaseUcmSCM) build.getProject().getScm();
                 EnvVars env = build.getEnvironment(listener);
+                String nodeName = Computer.currentComputer().getName();
+                ClearCaseConfiguration ccConfig = scm.fetchClearCaseConfig(nodeName);
+                FilePath workspace = scm.getOriginalWorkspace();
+                if (workspace == null) {
+                	workspace = build.getWorkspace();
+                }
+                ClearTool ct = scm.createClearTool(ccConfig.getCleartoolExe(),
+                		workspace, build.getBuiltOn().getRootPath(), env, ctLogFile, null);
+                View view = scm.getView();
+                Stream stream = view.getStream();
                 
-                String baseName = env.expand(namePattern);
-                String comment = env.expand(commentPattern);
+                ///// check stream lock state /////////////////////////////////////////////////////
+                LockState state = ct.getStreamLockState(stream);
+                stream.setLockState(state);
+                switch (state) {
+                case NONE:
+                case UNLOCKED:
+                    break;
+                default:
+                    logger.log("WARNING: building on a '" + state
+                            + "' stream. No baseline will be created.");
+                    return false;
+                }
 
-                // illegal characters removal
+                
+                ///// resolve variables in baseline name //////////////////////////////////////////
+                String baseName = env.expand(this.namePattern);
+                String comment = env.expand(this.commentPattern);
+
+                /* illegal characters removal */
                 baseName = baseName.replaceAll("[\\s\\\\\\/:\\?\\*\\|]+", "_");
                 Pattern p = Pattern.compile("(\\$\\{.+?\\})");
                 Matcher match = p.matcher(baseName);
@@ -274,270 +266,67 @@ public class UcmBaseline extends Notifier {
                             "in baseline name : %s. " +
                             "An environment variable may not have been resolved.", match.group()));
                 }
-                /////// END VARIABLE RESOLUTION ///////////////////////////////////////////////////
-                /* In this plugin, the commands are displayed in a separate console "cleartool output"
-                 * because cleartool gets sometimes very verbose and it pollutes the build log.
-                 * 
-                 * By default, Hudson prints every command invoked in the console no matter 
-                 * what the user wants. This is done through the getListener().getLogger().printLn() 
-                 * method from the Launcher class. 
-                 * 
-                 * As there is no way to modify this behaviour, I had to create a new launcher 
-                 * with a NULL TaskListener so that when Hudson prints something, it goes to 
-                 * the trash instead of poping in the middle of the build log */
-                Launcher launcher = Executor.currentExecutor().getOwner().getNode().createLauncher(
-                        TaskListener.NULL);
-                String nodeName = Computer.currentComputer().getName();
-                ClearCaseConfiguration ccConfig = scm.fetchClearCaseConfig(nodeName);
-                FilePath workspace = scm.getOriginalWorkspace();
-                if (workspace == null) {
-                    workspace = build.getWorkspace();
-                }
                 
-                ClearTool ct = scm.createClearTool(ccConfig.getCleartoolExe(),
-                        workspace, build.getBuiltOn().getRootPath(), 
-                        launcher, env, ctLogFile);
+                
+                ///// main process ////////////////////////////////////////////////////////////////
+                logger.log("Retrieving components details...");
+                List<Component> components = resolveComponents(stream, ct);
 
-                View view = scm.getView();
-                Stream stream = view.getStream();
-                
-                LockState state = ct.getStreamLockState(stream);
-                stream.setLockState(state);
-                
-                switch (state) {
-                case LOCKED:
-                    logger.log("WARNING: building on a LOCKED stream. " +
-                            "No baseline will be created.");
-                    break;
-                case OBSOLETE:
-                    logger.log("WARNING: building on an OBSOLETE stream. " +
-                            "No baseline will be created.");
-                    build.setResult(Result.UNSTABLE);
-                    return false;
-                default:
-                    if (this.lockStream) {
-                        logger.log("Locking stream...");
-                        try {
-                            ct.lockStream(view.getStream());
-                            this.streamSuccessfullyLocked = true;
-                        } catch (ClearToolError e) {
-                            logger.log(e.toString());
-                            this.streamSuccessfullyLocked = false;
-                        }
-                    }
-                }
-                
-                /////// BEGIN BASELINE CREATION/RETRIEVAL /////////////////////////////////////////
-                List<Component> componentsObj = new ArrayList<Component>();
-                List<CompositeComponent> compositeCompObj = new ArrayList<CompositeComponent>();
-                if (Util.fixEmptyAndTrim(this.components) != null) {
-                    logger.log("Retrieving components details...");
-                    String[] compTab = Util.fixEmptyAndTrim(this.components).split("\\s");
-                    for (String compName : compTab) {
-                        if (Util.fixEmptyAndTrim(compName) != null) {
-                            Baseline bl = ct.getLatestBl(new Component(compName), stream);
-                            
-                            List<Baseline> dependingBls = ct.getDependingBaselines(bl);
-                            if (!dependingBls.isEmpty()) {
-                                CompositeComponent c_comp = new CompositeComponent(compName);
-                                for (Baseline depBl : dependingBls) {
-                                    Component depComp = ct.getComponentFromBL(depBl);
-                                    c_comp.getAttachedComponents().add(depComp);
-                                }
-                                compositeCompObj.add(c_comp);
-                            } else {
-                                Component comp = new Component(compName);
-                                componentsObj.add(comp);
-                            }
-                            
-                        }
-                    }
-                }
-                
-                List<Baseline> createdBls = new ArrayList<Baseline>();
-                if (stream.getLockState() == LockState.UNLOCKED) { 
-                    logger.log("Creating new baselines...");
-                    // creation of the baselines
-                    if (identical) {
-                        // baselines will be created on every component
-                        // no need to separate the composite components from the others.
-                        
-                        componentsObj.addAll(compositeCompObj);
-                        createdBls.addAll(ct.makeBaselines(view, componentsObj, identical, 
-                                fullBaseline, baseName, comment));
-                    } else {
-                        // here we want to create composite baselines even if there were no changes 
-                        // in the depending compoents.
-                        if (!compositeCompObj.isEmpty()) {
-                            for (CompositeComponent c_comp : compositeCompObj) {
-                                createdBls.addAll(ct.makeCompositeBaseline(view, c_comp, identical, 
-                                        fullBaseline, baseName, comment));
-                            }
-                            // then create regular baselines if needed
-                            if (!componentsObj.isEmpty()) {
-                                createdBls.addAll(ct.makeBaselines(view, componentsObj, identical, 
-                                        fullBaseline, baseName, comment));
-                            }
-                        } else {
-                            // no composite components were specified
-                            createdBls.addAll(ct.makeBaselines(view, componentsObj, identical, 
-                                    fullBaseline, baseName, comment));
-                        }
-                    }
-                }
+                logger.log("Creating new baselines...");
+                List<Baseline> createdBls = createBaselines(baseName, comment, ct, view, components);
+
                 logger.log("Retrieving latest baselines...");
-                // retrieval of the full names of the baselines
+                /* retrieval of the full names of the baselines */
                 List<Baseline> latestBls = ct.getLatestBaselines(stream);
                 
-                // get every component attached to the latest baselines
+                /* get every component attached to the latest baselines */
                 matchComponentsToBaselines(ct, stream, latestBls);
-                // resolve created baselines
+                /* resolve created baselines */
                 markCreatedBaselines(createdBls, latestBls);
-                
-                baselines = latestBls;
                 
                 printUsedBaselines(logger, latestBls);
                 
-                publishBaselinesAsParams(build, baselines);
-                /////// END BASELINE CREATION/RETRIEVAL ///////////////////////////////////////////
-           
-                logger.log("~~~ End Baseline creation ~~~");
-            } catch (ClearToolError ctError) {
-                listener.getLogger().println(ctError.toString());
-                build.setResult(Result.FAILURE);
-                return false;
-            } catch (Exception e) {
-                e.printStackTrace(listener.getLogger());
-                build.setResult(Result.FAILURE);
-                return false;
-            }
-         } else {
-            listener.getLogger().println("ERROR: Baselines are only handled by Clearcase UCM.");
-            return false;
-        }
-        return true;
-    } // doPreBuild()
-    
-    
- 
-    
-
-    /** {@inheritDoc} **/
-    @Override
-    public boolean perform(AbstractBuild<?, ?> build, Launcher l, BuildListener listener)
-            throws InterruptedException, IOException {
-
-        if (build.getProject().getScm() instanceof ClearCaseUcmSCM) {
-            try {
-                /* In this plugin, the commands are displayed in a separate console "cleartool output"
-                 * because cleartool gets sometimes very verbose and it pollutes the build log.
-                 * 
-                 * By default, Hudson prints every command invoked in the console no matter 
-                 * what the user wants. This is done through the getListener().getLogger().printLn() 
-                 * method from the Launcher class. 
-                 * 
-                 * As there is no way to modify this behaviour, I had to create a new launcher 
-                 * with a NULL TaskListener so that when Hudson prints something, it goes to 
-                 * the trash instead of poping in the middle of the build log */
-                Launcher launcher = Executor.currentExecutor().getOwner().getNode().createLauncher(
-                        TaskListener.NULL); 
-                
-                File ctLogFile = ClearToolLogFile.getCleartoolLogFile(build);
-                ClearCaseLogger logger = new ClearCaseLogger(listener, ctLogFile);
-                
-                logger.log("### Begin Baseline promotion ###");
-                
-                // get all created baselines
-                List<Baseline> createdBls = new ArrayList<Baseline>();
-                if (this.baselines != null) { // I can't figure out why this can be null here but wtf...
-                    for (Baseline bl : this.baselines) {
-                        if (bl.isCreated()) {
-                            createdBls.add(bl);
+                if (createdBls.isEmpty()) {
+                    logger.log("No baseline was created.");
+                } else {
+                    /* get vob dependent promotion levels */
+                    ct.fetchPromotionLevels(stream.getPvob());
+                    
+                    if (buildOK) {
+                        logger.log("Promoting created baselines...");
+                        
+                        /* On success, promote all the baselines that hudson created to "BUILT" */
+                        for (Baseline bl : createdBls) {
+                            ct.changeBaselinePromotionLevel(bl, PromotionLevel.BUILT);
+                            logger.log(printPromotedBl(bl, ct.print(PromotionLevel.BUILT)));
+                        }
+                        
+                        /* recommend all baselines that meet the stream's promotion level requirements */ 
+                        if (this.recommend) {
+                            logger.log("Recommending created baselines...");
+                            ct.recommendAllEligibleBaselines(stream);
+                        }
+                        /* Rebase a dynamic view */
+                        if (this.rebaseDynamicView) {
+                            logger.log(String.format("Rebasing view: %s with created baselines...", 
+                                    dynamicViewName));
+                            
+                            View dynView = new View(dynamicViewName, stream, true);
+                            ct.rebaseDynamicView(dynView, createdBls);
+                        }
+                    } else {
+                        /* On failure, demote all the baselines that hudson created to "REJECTED" */
+                        logger.log("Rejecting created baselines...");
+                        for (Baseline bl : createdBls) {
+                            ct.changeBaselinePromotionLevel(bl, PromotionLevel.REJECTED);
+                            logger.log(printPromotedBl(bl, ct.print(PromotionLevel.REJECTED)));
                         }
                     }
                 }
                 
-                ClearCaseUcmSCM scm = (ClearCaseUcmSCM) build.getProject().getScm();
+                publishBaselinesAsParams(build, latestBls);
                 
-                EnvVars env = build.getEnvironment(listener);
-                
-                File logFile = ClearToolLogFile.getCleartoolLogFile(build);
-                
-                String nodeName = Computer.currentComputer().getName();
-                ClearCaseConfiguration ccConfig = scm.fetchClearCaseConfig(nodeName);
-                FilePath workspace = scm.getOriginalWorkspace();
-                if (workspace == null) {
-                    workspace = build.getWorkspace();
-                }
-                
-                ClearTool ct = scm.createClearTool(ccConfig.getCleartoolExe(),
-                        workspace, build.getBuiltOn().getRootPath(), 
-                        launcher, env, logFile);
-                
-                View view = scm.getView();
-                Stream stream = view.getStream();
-                
-                if (stream.getLockState() == LockState.LOCKED) {
-                    logger.log("The stream is locked, no baseline to promote.");
-                    return true;
-                }
-                
-                if (createdBls.isEmpty()) {
-                    // this is to handle a hudson issue, when the checkout fails, the job skips the
-                    // prebuild step but still performs the baseline promotion...
-                    logger.log("No baseline to promote.");
-                    if (this.lockStream && this.streamSuccessfullyLocked) {
-                        logger.log("Unlocking stream...");
-                        ct.unlockStream(stream);
-                    }
-                    return true;
-                }
-                
-                // get vob dependent promotion levels
-                ct.fetchPromotionLevels(stream.getPvob());
-                
-                if (build.getResult().equals(Result.SUCCESS) || build.getResult().equals(Result.UNSTABLE)) {
-                    logger.log("Promoting baselines...");
-                    
-                    // On success, promote all the baselines that hudson created to "BUILT"
-                    for (Baseline bl : createdBls) {
-                        ct.changeBaselinePromotionLevel(bl, PromotionLevel.BUILT);
-                        logger.log(printPromotedBl(bl, ct.print(PromotionLevel.BUILT)));
-                    }
-                    
-                    if (this.lockStream && this.streamSuccessfullyLocked) {
-                        logger.log("Unlocking stream...");
-                        ct.unlockStream(stream);
-                    }
-                    
-                    // recommend all baselines that meet the stream's promotion level requirements 
-                    if (this.recommend) {
-                        logger.log("Recommending baselines...");
-                        ct.recommendAllEligibleBaselines(stream);
-                    }
-                    // Rebase a dynamic view
-                    if (this.rebaseDynamicView) {
-                        logger.log(String.format("Rebasing view: %s...", 
-                                this.dynamicViewName));
-                        
-                        View dynView = new View(this.dynamicViewName, stream, true);
-                        ct.rebaseDynamicView(dynView, createdBls);
-                    }
-                } else {
-                    // On failure, demote all the baselines that hudson created to "REJECTED"
-                    logger.log("Rejecting baselines...");
-                    for (Baseline bl : createdBls) {
-                        ct.changeBaselinePromotionLevel(bl, PromotionLevel.REJECTED);
-                        logger.log(printPromotedBl(bl, ct.print(PromotionLevel.REJECTED)));
-                    }
-                    if (this.lockStream && this.streamSuccessfullyLocked) {
-                        logger.log("Unlocking stream...");
-                        ct.unlockStream(stream);
-                    }
-                }
-                
-                logger.log("~~~ End Baseline promotion ~~~");
-                
+                logger.log("~~~ End Baseline creation/promotion ~~~");
                 
             } catch (ClearToolError ctError) {
                 listener.getLogger().println(ctError.toString());
@@ -552,8 +341,6 @@ public class UcmBaseline extends Notifier {
             listener.getLogger().println("ERROR: Baselines are only handled by Clearcase UCM.");
             return false;
         }
-        
-        
         return true;
     } // perform()
 
@@ -565,12 +352,86 @@ public class UcmBaseline extends Notifier {
      ** PRIVATE METHODS ** 
      *********************/
     
+    private List<Component> resolveComponents(Stream stream, ClearTool ct)
+            throws IOException, InterruptedException, ClearToolError
+    {
+        List<Component> components = new ArrayList<Component>();
+        if (Util.fixEmptyAndTrim(this.components) != null) {
+            
+            String[] compTab = Util.fixEmptyAndTrim(this.components).split("\\s");
+            for (String compName : compTab) {
+                if (Util.fixEmptyAndTrim(compName) != null) {
+                    Baseline bl = ct.getLatestBl(new Component(compName), stream);
+                    
+                    List<Baseline> dependingBls = ct.getDependingBaselines(bl);
+                    if (!dependingBls.isEmpty()) {
+                        CompositeComponent c_comp = new CompositeComponent(compName);
+                        for (Baseline depBl : dependingBls) {
+                            Component depComp = ct.getComponentFromBL(depBl);
+                            c_comp.getAttachedComponents().add(depComp);
+                        }
+                        components.add(c_comp);
+                    } else {
+                        Component comp = new Component(compName);
+                        components.add(comp);
+                    }
+                }
+            }
+        }
+        return components;
+    }
+
+    private List<Baseline> createBaselines(String baseName, String comment, ClearTool ct,
+            View view, List<Component> components) 
+                    throws IOException, InterruptedException, ClearToolError
+    {
+        List<Baseline> createdBls = new ArrayList<Baseline>();
+        
+        /* creation of the baselines */
+        if (identical) {
+            /* baselines will be created on every component
+             * no need to separate the composite components from the others. */
+            createdBls.addAll(ct.makeBaselines(view, components, identical, fullBaseline,
+                    baseName, comment));
+        } else {
+            /* here we want to create composite baselines even if there were no changes
+             * in the depending components. */
+            List<Component> simpleComps = new ArrayList<Component>();
+            List<CompositeComponent> compositeComps = new ArrayList<CompositeComponent>();
+            for (Component c : components) {
+                if (c.isComposite()) {
+                    compositeComps.add((CompositeComponent) c);
+                } else {
+                    simpleComps.add(c);
+                }
+            }
+            if (!compositeComps.isEmpty()) {
+                for (CompositeComponent cComp : compositeComps) {
+                    createdBls.addAll(ct.makeCompositeBaseline(view, cComp, identical,
+                            fullBaseline, baseName, comment));
+                }
+                /* then create regular baselines if needed */
+                if (!simpleComps.isEmpty()) {
+                    createdBls.addAll(ct.makeBaselines(view, simpleComps, identical,
+                            fullBaseline, baseName, comment));
+                }
+            } else {
+                /* no composite components were specified */
+                createdBls.addAll(ct.makeBaselines(view, simpleComps, identical, fullBaseline,
+                        baseName, comment));
+            }
+        }
+        return createdBls;
+    }
+    
+    
+    
     private void printUsedBaselines(ClearCaseLogger logger, List<Baseline> latestBls) {
         for (Baseline bl : latestBls) {
             String blString;
             
             if (bl.isCreated()) {
-                blString = "* baseline: %s (on component %s)";
+                blString = "* baseline: %s (created on component %s)";
             } else {
                 blString = "  baseline: %s (component %s unmodified)";
             }
@@ -589,6 +450,10 @@ public class UcmBaseline extends Notifier {
             for (Baseline createdBl : createdBls) {
                 if (latestBl.getName().equals(createdBl.getName())) {
                     latestBl.setCreated(true);
+                    /* we transfer the component & pvob information here so they can be used for
+                     * the promotion and recomendation of the created baselines later. */
+                    createdBl.setComponent(latestBl.getComponent());
+                    createdBl.setPvob(latestBl.getPvob());
                     break;
                 }
             }
@@ -598,13 +463,13 @@ public class UcmBaseline extends Notifier {
     private void matchComponentsToBaselines(ClearTool ct, Stream stream, List<Baseline> latestBls) 
             throws IOException, InterruptedException, ClearToolError 
     {
-        // retrieval of the components attached to the stream
+        /* retrieval of the components attached to the stream */
         stream.setComponents(ct.getComponents(stream));
         
         for (Baseline bl : latestBls) {
             Component comp;
 
-            // get baselines dependencies to detect composite components
+            /* get baselines dependencies to detect composite components */
             List<Baseline> dependentBls = ct.getDependingBaselines(bl);
             
             if (!dependentBls.isEmpty()) {
@@ -613,7 +478,7 @@ public class UcmBaseline extends Notifier {
                 comp = ct.getComponentFromBL(bl);
             }
             
-            // mark read only components
+            /* mark read only components */
             for (Component streamComp : stream.getComponents()) {
                 if (streamComp.equals(comp)) {
                     comp.setReadOnly(streamComp.isReadOnly());
@@ -653,70 +518,6 @@ public class UcmBaseline extends Notifier {
                 parameters.add(new StringParameterValue(paramKey, bl.toString(), description));
             }
         }
-    }
-    
-    /**
-     * Insert a dummy UcmBaselineBuildStep at the beginning of a project's build step list.
-     * 
-     * This is done through Java reflection as the build step list is a private field.
-     * 
-     * @since 2.5.0
-     * @author Robin Jarry
-     */
-    @SuppressWarnings("unchecked")
-    private void insertBaselineBuildStep(Project<?, ?> project) throws NoSuchFieldException,
-            SecurityException, IllegalArgumentException, IllegalAccessException
-    {
-        Field buildersField = Project.class.getDeclaredField("builders");
-        buildersField.setAccessible(true);
-        DescribableList<Builder, Descriptor<Builder>> builders;
-        builders = (DescribableList<Builder, Descriptor<Builder>>) buildersField.get(project);
-        List<Builder> modifiedList = new ArrayList<Builder>(builders.toList());
-        
-        UcmBaselineBuildStep baselineBuildStep = new UcmBaselineBuildStep(this);
-        modifiedList.add(0, baselineBuildStep);
-
-        Field dataField = PersistedList.class.getDeclaredField("data");
-        dataField.setAccessible(true);
-        CopyOnWriteList<Builder> data = (CopyOnWriteList<Builder>) dataField.get(builders);
-        data.replaceBy(modifiedList);
-    }
-
-    /**
-     * Remove any UcmBaselineBuildStep from a project's build step list.
-     * 
-     * This is done through Java reflection as the build step list is a private field.
-     * 
-     * @since 2.5.0
-     * @author Robin Jarry
-     */
-    @SuppressWarnings("unchecked")
-    private static boolean restoreOriginalBuildSteps(Project<?, ?> project)
-            throws NoSuchFieldException, SecurityException, IllegalArgumentException,
-            IllegalAccessException
-    {
-        boolean modified = false;
-        Field buildersField = Project.class.getDeclaredField("builders");
-        buildersField.setAccessible(true);
-        DescribableList<Builder, Descriptor<Builder>> builders;
-        builders = (DescribableList<Builder, Descriptor<Builder>>) buildersField.get(project);
-        List<Builder> modifiedList = new ArrayList<Builder>(builders.toList());
-        for (Iterator<Builder> it = modifiedList.iterator(); it.hasNext();) {
-            Builder b = it.next();
-            if (b instanceof UcmBaselineBuildStep) {
-                it.remove();
-                modified = true;
-            }
-        }
-        if (modified) {
-            Field dataField = PersistedList.class.getDeclaredField("data");
-            dataField.setAccessible(true);
-            CopyOnWriteList<Builder> data = (CopyOnWriteList<Builder>) dataField.get(builders);
-            data.replaceBy(modifiedList);
-            Logger logger = Logger.getLogger(UcmBaseline.class.getName());
-            logger.info("Dummy UcmBaseline builder removed for project: " + project.getName());
-        }
-        return modified;
     }
 
     /*************
@@ -759,129 +560,9 @@ public class UcmBaseline extends Notifier {
         return components;
     }
 
-    
-    /*********************
-     ** UTILITY CLASSES **
-     *********************/
-    
-    /**
-     * This is a dummy build step to allow the baseline creation to take place just BEFORE the 
-     * actual build steps and AFTER the build wrappers.
-     * 
-     * @since 2.5.0
-     * @author Robin Jarry
-     */
-    public static class UcmBaselineBuildStep extends Builder {
-
-        private transient final UcmBaseline publisher;
-
-        @DataBoundConstructor
-        public UcmBaselineBuildStep() {
-            this(null);
-        }
-
-        public UcmBaselineBuildStep(UcmBaseline publisher) {
-            super();
-            this.publisher = publisher;
-        }
-
-        @Override
-        public boolean perform(AbstractBuild<?, ?> build, Launcher l, BuildListener listener)
-                throws InterruptedException, IOException
-        {
-            if (this.publisher != null) {
-                return this.publisher.doPreBuild(build, listener);
-            } else {
-                return true;
-            }
-        }
-
-        @Extension
-        public static class DescriptorImpl extends BuildStepDescriptor<Builder> {
-
-            @SuppressWarnings("rawtypes")
-            @Override
-            public boolean isApplicable(Class<? extends AbstractProject> jobType) {
-                return false;
-            }
-
-            @Override
-            public String getDisplayName() {
-                return "UCM Baseline Creation";
-            }
-        }
-    } // class BaselineBuildStep
-    
-    /**
-     * This listener removes any UcmBaselineBuildStep present in the builders section of a 
-     * project when a build is complete.
-     * 
-     * If a build is manually aborted, the build steps are removed anyways.
-     * 
-     * If an exception occurs, the listener does nothing.
-     * 
-     * @since 2.5.0
-     * @author Robin Jarry
-     */
-    @SuppressWarnings("rawtypes")
-    @Extension
-    public static class RestoreBuildStepsListener extends RunListener<AbstractBuild> {
-
-        public RestoreBuildStepsListener() {
-            this(AbstractBuild.class);
-        }
-        
-        protected RestoreBuildStepsListener(Class<AbstractBuild> targetType) {
-            super(targetType);
-        }
-        
-        @Override
-        public void onCompleted(AbstractBuild build, TaskListener listener) {
-            try {
-                Project<?, ?> project = (Project<?, ?>) build.getProject();
-                boolean modified = restoreOriginalBuildSteps(project);
-                if (modified) {
-                    try {
-                        File ctLogFile = ClearToolLogFile.getCleartoolLogFile(build);
-                        ClearCaseLogger logger = new ClearCaseLogger(listener, ctLogFile);
-                        logger.log("Restored the original build steps.");
-                    } catch (IOException e1) {
-                        /* pass */;
-                    }
-                }
-            } catch (Exception e) {
-                /* pass */;
-            }
-        }
-    } // class RestoreBuildStepsListener
-
-    /**
-     * This listener makes sure that no UcmBaselineBuildStep is present in the builders section
-     * of a project when saving.
-     * 
-     * If an exception occurs, the listeners does nothing.
-     * 
-     * @since 2.5.0
-     * @author Robin Jarry
-     */
-    @Extension
-    public static class OnSaveListener extends SaveableListener {
-        
-        @Override
-        public void onChange(Saveable o, XmlFile file) {
-            if (o instanceof Project<?, ?>) {
-                try {
-                    boolean modified = restoreOriginalBuildSteps((Project<?, ?>) o);
-                    if (modified) {
-                        file.write(o);
-                    }
-                } catch (Exception e) {
-                    /* pass */;
-                }
-            }
-        }
-    } // class OnSaveListener
-    
+    public boolean isSkipOnBuildFailure() {
+        return skipOnBuildFailure;
+    }
     
 } // class UcmBaseline
 

@@ -40,6 +40,17 @@ public class View {
         this.dynamic = dynamic;
     }
     
+    public View(View view) {
+        this.name = view.name;
+        this.stream = view.stream;
+        this.viewPath = view.viewPath;
+        this.localPath = view.localPath;
+        this.globalPath = view.globalPath;
+        this.uuid = view.uuid;
+        this.dynamic = view.dynamic;
+        this.ucm = view.ucm;
+    }
+    
     /*******************************
      **** METHODS ******************
      *******************************/

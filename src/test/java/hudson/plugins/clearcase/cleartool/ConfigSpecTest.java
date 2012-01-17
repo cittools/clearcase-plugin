@@ -2,26 +2,27 @@ package hudson.plugins.clearcase.cleartool;
 
 import static org.junit.Assert.*;
 
+import hudson.plugins.clearcase.objects.ConfigSpec;
+import hudson.plugins.clearcase.util.Tools;
+
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 
 import org.junit.Test;
 
 public class ConfigSpecTest {
 
-    final static String SELECT_RULES = "ucm\n" +
-            "identity 8723874289798724:28489729874\n" +
-            "element * CHECKEDOUT\n" +
-            "element /vobs/test/... labelname -mkbranch dev_steam\n" +
-            "#this is a comment\n" +
-            "end ucm\n" +
-            "element * /main/0\n";
-    final static String LOAD_RULES = "load /vobs/test/folder1\n" +
-            "#load /vobs/test/folder1/toto.txt\n" +
-            "load /vobs/test/folder2\n" +
-            "load /vobs/test/folder3\n";
-
-
+    final static String SELECT_RULES = "ucm\n" + "identity 8723874289798724:28489729874\n"
+            + "element * CHECKEDOUT\n"
+            + "element /vobs/test/... .../dev_steam/LATEST -mkbranch dev_steam\n"
+            + "element /vobs/test2/... .../dev_steam2/LATEST -time yesterday -mkbranch dev_steam\n"
+            + "element /vobs/test/... labelname -mkbranch dev_steam\n" + "#this is a comment\n"
+            + "end ucm\n" + "element * /main/0\n";
+    final static String LOAD_RULES = "load /vobs/test/folder1\n"
+            + "#load /vobs/test/folder1/toto.txt\n" + "load /vobs/test/folder2\n"
+            + "load /vobs/test/folder3\n";
 
     @Test
     public void testExtractLoadRules() {
@@ -63,8 +64,26 @@ public class ConfigSpecTest {
         assertTrue(cs.loadRulesDiffer(loadRules));
     }
 
+    @Test
+    public void testAddTimeRules() {
+        ConfigSpec cs = new ConfigSpec(SELECT_RULES);
 
+        Date time = Calendar.getInstance().getTime();
+        cs.addTimeRules(time);
 
+        String timeStr = Tools.formatCleartoolDate(time);
 
+        assertTrue(cs.getValue().contains(
+                ".../dev_steam/LATEST -time " + timeStr + " -mkbranch dev_steam"));
+        assertFalse(cs.getValue().contains(".../dev_steam2/LATEST -time " + timeStr));
+    }
+
+    @Test
+    public void testAddTimeNowRules() {
+        ConfigSpec cs = new ConfigSpec(SELECT_RULES);
+        cs.addTimeRules(null);
+        assertTrue(cs.getValue().contains(".../dev_steam/LATEST -time now -mkbranch dev_steam"));
+        assertFalse(cs.getValue().contains(".../dev_steam2/LATEST -time now"));
+    }
 
 }

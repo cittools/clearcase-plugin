@@ -29,14 +29,14 @@ import static hudson.plugins.clearcase.cleartool.HistoryFormatHandler.LINEEND;
 import hudson.EnvVars;
 import hudson.FilePath;
 import hudson.plugins.clearcase.objects.Baseline;
+import hudson.plugins.clearcase.objects.Baseline.PromotionLevel;
 import hudson.plugins.clearcase.objects.Component;
 import hudson.plugins.clearcase.objects.CompositeComponent;
 import hudson.plugins.clearcase.objects.HistoryEntry;
 import hudson.plugins.clearcase.objects.Stream;
+import hudson.plugins.clearcase.objects.Stream.LockState;
 import hudson.plugins.clearcase.objects.UcmActivity;
 import hudson.plugins.clearcase.objects.View;
-import hudson.plugins.clearcase.objects.Baseline.PromotionLevel;
-import hudson.plugins.clearcase.objects.Stream.LockState;
 import hudson.plugins.clearcase.util.ClearToolError;
 import hudson.plugins.clearcase.util.Tools;
 import hudson.util.ArgumentListBuilder;
@@ -46,15 +46,12 @@ import java.io.File;
 import java.io.IOException;
 import java.io.StringReader;
 import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
-import java.util.TimeZone;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -569,21 +566,16 @@ public abstract class ClearTool implements CTFunctions {
             View view, String branch, List<String> lookupPaths, String extendedViewPath)
             throws IOException, InterruptedException, ClearToolError, ParseException
     {
-        SimpleDateFormat formatter = new SimpleDateFormat("dd-MMM-yyyy.HH:mm:ss", Locale.US);
-        int offset = TimeZone.getDefault().getOffset(sinceDate.getTime()) / (1000 * 60 * 60);
-        
-        String dateStr = formatter.format(sinceDate).toLowerCase();
-        dateStr += String.format("UTC%+d", offset);
-        
         ArgumentListBuilder args = new ArgumentListBuilder();
         args.add("lshistory");
-        args.add("-all");
-        args.add("-since", dateStr);
+        args.add("-since", Tools.formatCleartoolDate(sinceDate));
         args.add("-fmt", formatHandler.getFormat() + COMMENT + LINEEND);
         if ((branch != null) && (branch.length() > 0)) {
             args.add("-branch", "brtype:" + branch);
         }
         args.add("-nco");
+        /* 20111216: replaced '-all' by '-r', '-all' makes lshistory ignore the lookupPaths */
+        args.add("-r"); 
         for (String path : lookupPaths) {
             args.add(path);
         }

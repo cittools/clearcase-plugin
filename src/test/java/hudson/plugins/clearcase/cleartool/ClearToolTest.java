@@ -557,8 +557,8 @@ public class ClearToolTest {
                 "/extended/view/path");
 
         // verify command line
-        ArgumentListBuilder args = new ArgumentListBuilder("lshistory", "-all", "-since", dateStr,
-                "-fmt", fmt_ccase, "-branch", "brtype:branch", "-nco");
+        ArgumentListBuilder args = new ArgumentListBuilder("lshistory", "-since", dateStr,
+                "-fmt", fmt_ccase, "-branch", "brtype:branch", "-nco", "-r");
         for (String path : lookupPaths) {
             args.add(path);
         }

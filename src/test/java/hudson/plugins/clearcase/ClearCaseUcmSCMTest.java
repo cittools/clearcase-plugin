@@ -1,13 +1,9 @@
 package hudson.plugins.clearcase;
 
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import hudson.EnvVars;
 import hudson.FilePath;
 import hudson.Functions;
-import hudson.model.AbstractProject;
-import hudson.model.FreeStyleProject;
-import hudson.model.Project;
 import hudson.plugins.clearcase.changelog.UcmChangeLogParser;
 import hudson.plugins.clearcase.util.Tools;
 
@@ -25,7 +21,6 @@ import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
-@SuppressWarnings("rawtypes")
 @RunWith(PowerMockRunner.class)
 @PrepareForTest( { Functions.class, Tools.class })
 public class ClearCaseUcmSCMTest {
@@ -69,6 +64,7 @@ public class ClearCaseUcmSCMTest {
         Assert.assertEquals("CC_config", scm.getClearcaseConfig());
         Assert.assertEquals("stream@/vobtag", scm.getStream());
         Assert.assertFalse(scm.isDoNotUpdateConfigSpec());
+        Assert.assertNull(scm.getCustomWorkspace());
     }
 
     @Test
@@ -87,39 +83,7 @@ public class ClearCaseUcmSCMTest {
         Assert.assertEquals("/view", scm.getViewDrive());
     }
 
-    @Test
-    public void wipeoutWorkspaceDynamicTest() throws Exception {
-        boolean useDynamicView = true;
-        ClearCaseUcmSCM scmDynamicView = new ClearCaseUcmSCM(null, null, false, false, null, null,
-                useDynamicView, null, 0, null, false, "", "");
-        Assert.assertTrue(scmDynamicView.processWorkspaceBeforeDeletion(null, null, null));
-    }
-
-    @Test
-    public void wipeoutWorkspaceCustomWSTest() throws Exception {
-        FreeStyleProject project = mock(FreeStyleProject.class);
-        when(project.getCustomWorkspace()).thenReturn("/path/to/custom/workspace");
-        Project<?, ?> root = mock(Project.class);
-        when(root.getRootProject()).thenReturn((AbstractProject) project);
-        Assert.assertFalse(scm.processWorkspaceBeforeDeletion(root, null, null));
-    }
-/*
-    @Test
-    public void wipeoutWorkspaceMasterTest() throws Exception {
-        FreeStyleProject project = mock(FreeStyleProject.class);
-        when(project.getCustomWorkspace()).thenReturn(null);
-
-        Project<?, ?> root = mock(Project.class);
-        when(root.getRootProject()).thenReturn((AbstractProject) project);
-
-        Node node = mock(Node.class);
-        when(node.getNodeName()).thenReturn("");
-
-        when(project.getBuilds()).thenReturn(RunList.fromRuns(new ArrayList<FreeStyleBuild>()));
-
-        Assert.assertTrue(scm.processWorkspaceBeforeDeletion(root, null, node));
-    }
-*/
+ 
     @Test
     public void miscMethodsTest() throws Exception {
         Assert.assertTrue(scm.supportsPolling());

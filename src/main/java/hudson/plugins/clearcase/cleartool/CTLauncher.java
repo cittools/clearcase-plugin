@@ -59,14 +59,14 @@ public class CTLauncher {
      *******************************/
 
     public CTLauncher(String executable, FilePath workspace, FilePath nodeRoot,
-            Launcher launcher, EnvVars env, File logFile)
+            EnvVars env, File logFile, Launcher launcher)
     {
         this.executable = executable;
         this.workspace = workspace;
         this.nodeRoot = nodeRoot;
-        this.launcher = launcher;
         this.env = env;
         this.logFile = logFile;
+        this.launcher = launcher;
     }
 
     /*******************************

@@ -27,31 +27,31 @@ package hudson.plugins.clearcase.checkout;
 import hudson.FilePath;
 import hudson.model.TaskListener;
 import hudson.plugins.clearcase.cleartool.ClearTool;
-import hudson.plugins.clearcase.cleartool.ConfigSpec;
 import hudson.plugins.clearcase.log.ClearCaseLogger;
+import hudson.plugins.clearcase.objects.ConfigSpec;
 import hudson.plugins.clearcase.objects.View;
 import hudson.plugins.clearcase.util.ClearToolError;
 
 import java.io.IOException;
+import java.util.Calendar;
+import java.util.Date;
 
-/**
- * Check out action for dynamic views. This will not update any files from the
- * repository as it is a dynamic view. The class will make sure that the
- * configured config spec is the same as the one for the dynamic view.
- */
+
 public class DynamicCheckoutAction extends CheckoutAction {
 
     private final String configSpec;
     private final boolean doNotUpdateConfigSpec;
+    private final int timeShift;
 
 
     public DynamicCheckoutAction(ClearTool cleartool, ClearCaseLogger logger, View view,
             String stgloc, String mkViewOptionalParams, boolean useUpdate, String configSpec,
-            boolean doNotUpdateConfigSpec)
+            boolean doNotUpdateConfigSpec, int timeShift)
     {
         super(cleartool, logger, view, stgloc, mkViewOptionalParams, useUpdate);
         this.configSpec = configSpec;
         this.doNotUpdateConfigSpec = doNotUpdateConfigSpec;
+        this.timeShift = timeShift;
     }
 
 
@@ -60,10 +60,11 @@ public class DynamicCheckoutAction extends CheckoutAction {
             throws IOException, InterruptedException, ClearToolError
     {
         boolean viewExists = false, createView = false;
-
+        
+        View existingView = new View(view.getName());
         logger.log("Fetching view info...");
         try {
-            viewExists = cleartool.getViewInfo(view);
+            viewExists = cleartool.getViewInfo(existingView);
         } catch (ClearToolError cte) {
             /* the server hosting the view was not reachable
              * we consider that the view already exists
@@ -76,7 +77,7 @@ public class DynamicCheckoutAction extends CheckoutAction {
         if (viewExists) {
             if (!useUpdate) {
                 logger.log("Deleting old view...");
-                cleartool.rmview(view);
+                cleartool.rmview(existingView);
                 createView = true;
             }
         } else {
@@ -88,27 +89,25 @@ public class DynamicCheckoutAction extends CheckoutAction {
             cleartool.mkview(view, stgloc, cleartool.getEnv().expand(mkViewOptionalParams));
         }
 
-        logger.log(String.format("Starting view: %s...", view));
+        logger.log("Starting view: " + view + "...");
         cleartool.startView(view);
 
         if (!doNotUpdateConfigSpec) {
-            logger.log("Searching for changes in config spec...");
+        	logger.log("Updating config spec...");
 
-            // resolution of variables in the configspec
+            /* resolution of variables in the configspec */
             ConfigSpec jobConfSpec = new ConfigSpec(cleartool.getEnv().expand(configSpec));
-            ConfigSpec viewConfigSpec = new ConfigSpec(cleartool.catcs(view));
-
-            // we can ignore load rules in dynamic views
+            /* we can ignore load rules in dynamic views */
             jobConfSpec.removeLoadRules();
-            viewConfigSpec.removeLoadRules();
-
-            if (!viewConfigSpec.equals(jobConfSpec)) {
-                logger.log("Updating config spec...");
-                cleartool.setcs(view, jobConfSpec.toString());
-            } else {
-                logger.log("No changes in config spec, updating view...");
-                cleartool.update(view);
-            }
+            /* We add "-time" rules next to the element with "LATEST" rules.
+               This way, we are sure that the view contents will not change during the build. */
+            Calendar cal = Calendar.getInstance();
+            cal.add(Calendar.SECOND, timeShift);
+            Date time = cal.getTime();
+            logger.log("Freezing view at " + time + "...");
+            jobConfSpec.addTimeRules(time);
+            
+            cleartool.setcs(view, jobConfSpec.getValue());
         }
 
         return true;

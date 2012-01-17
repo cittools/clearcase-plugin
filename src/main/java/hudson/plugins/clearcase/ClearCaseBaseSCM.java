@@ -126,17 +126,19 @@ public class ClearCaseBaseSCM extends AbstractClearCaseSCM {
     protected View createView(String viewTag) {
         return new View(viewTag, this.isUseDynamicView());
     }
-    
+
     /** implementation of abstract method {@link AbstractClearCaseSCM#createCheckOutAction()} */
     @Override
     protected CheckoutAction createCheckoutAction(ClearTool ct, ClearCaseLogger logger, View view,
-            String stgloc) {
+            String stgloc)
+    {
         CheckoutAction action;
         if (isUseDynamicView()) {
-            action = new DynamicCheckoutAction(ct, logger, view, stgloc, getMkviewOptionalParam(), 
-                    isUseUpdate(), getConfigSpec(), isDoNotUpdateConfigSpec());
+            action = new DynamicCheckoutAction(ct, logger, view, stgloc, getMkviewOptionalParam(),
+                    isUseUpdate(), getConfigSpec(), isDoNotUpdateConfigSpec(),
+                    BASE_DESCRIPTOR.getTimeShift());
         } else {
-            action = new SnapshotCheckoutAction(ct, logger, view, stgloc, getMkviewOptionalParam(), 
+            action = new SnapshotCheckoutAction(ct, logger, view, stgloc, getMkviewOptionalParam(),
                     isUseUpdate(), getConfigSpec(), getViewPaths(ct.getWorkspace()));
         }
         return action;

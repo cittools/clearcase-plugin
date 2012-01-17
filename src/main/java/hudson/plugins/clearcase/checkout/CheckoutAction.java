@@ -30,14 +30,8 @@ import hudson.plugins.clearcase.cleartool.ClearTool;
 import hudson.plugins.clearcase.log.ClearCaseLogger;
 import hudson.plugins.clearcase.objects.View;
 import hudson.plugins.clearcase.util.ClearToolError;
-import hudson.plugins.clearcase.util.Tools;
 
-import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public abstract class CheckoutAction {
     
@@ -51,8 +45,6 @@ public abstract class CheckoutAction {
     protected final String mkViewOptionalParams;
     protected final boolean useUpdate; 
     
-    private final boolean windows;
-    
     /*****************
      ** CONSTRUCTOR **
      *****************/
@@ -64,7 +56,6 @@ public abstract class CheckoutAction {
 		this.stgloc = stgloc;
 		this.mkViewOptionalParams = mkViewOptionalParams;
 		this.useUpdate = useUpdate;
-		this.windows = Tools.isWindows(cleartool.getWorkspace());
 	}
 
     /*********************
