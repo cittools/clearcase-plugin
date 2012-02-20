@@ -152,7 +152,7 @@ public abstract class ClearTool implements CTFunctions {
             boolean full, String baseName, String comment) throws IOException,
             InterruptedException, ClearToolError
     {
-        FilePath execPath = null;
+        FilePath viewPath = null;
         ArgumentListBuilder args = new ArgumentListBuilder();
         args.add("mkbl");
         if (comment != null) {
@@ -163,7 +163,13 @@ public abstract class ClearTool implements CTFunctions {
         if (view.isDynamic()) {
             args.add("-view", view.getName());
         } else {
-            execPath = getViewRootPath().child(view.getName());
+            if (view.getViewPath() != null) {
+                /* if viewPath is already defined, we use it */
+                viewPath = new FilePath(getViewRootPath().getChannel(), view.getViewPath());
+            } else {
+                /* else, we use a child directory in the workspace/viewRoot */
+                viewPath = getViewRootPath().child(view.getName());
+            }
         }
         if (components != null && !components.isEmpty()) {
             /* remove all spaces and brackets */
@@ -182,7 +188,7 @@ public abstract class ClearTool implements CTFunctions {
         }
         args.add(baseName);
 
-        String cleartoolResult = launcher.run(args, execPath);
+        String cleartoolResult = launcher.run(args, viewPath);
 
         List<Baseline> createdBaselines = new ArrayList<Baseline>();
 
@@ -214,7 +220,7 @@ public abstract class ClearTool implements CTFunctions {
             boolean identical, boolean full, String baseName, String comment) throws IOException,
             InterruptedException, ClearToolError
     {
-        FilePath execPath = null;
+        FilePath viewPath = null;
         ArgumentListBuilder args = new ArgumentListBuilder();
         args.add("mkbl");
 
@@ -229,7 +235,13 @@ public abstract class ClearTool implements CTFunctions {
         if (view.isDynamic()) {
             args.add("-view", view.getName());
         } else {
-            execPath = getViewRootPath().child(view.getName());
+            if (view.getViewPath() != null) {
+                /* if viewPath is already defined, we use it */
+                viewPath = new FilePath(getViewRootPath().getChannel(), view.getViewPath());
+            } else {
+                /* else, we use a child directory in the workspace/viewRoot */
+                viewPath = getViewRootPath().child(view.getName());
+            }
         }
 
         /* remove all spaces and brackets */
@@ -249,7 +261,7 @@ public abstract class ClearTool implements CTFunctions {
 
         args.add(baseName);
 
-        String cleartoolResult = launcher.run(args, execPath);
+        String cleartoolResult = launcher.run(args, viewPath);
 
         List<Baseline> createdBaselines = new ArrayList<Baseline>();
 
@@ -497,6 +509,7 @@ public abstract class ClearTool implements CTFunctions {
     @Override
     public void update(View view) throws IOException, InterruptedException, ClearToolError {
         ArgumentListBuilder args = new ArgumentListBuilder();
+
         args.add("setcs");
         if (view.isDynamic()) {
             args.add("-tag", view.getName());
@@ -509,7 +522,15 @@ public abstract class ClearTool implements CTFunctions {
             args.add("-current");
         }
 
-        launcher.run(args, getViewRootPath().child(view.getName()));
+        FilePath viewPath;
+        if (view.getViewPath() != null) {
+            /* if viewPath is already defined, we use it */
+            viewPath = new FilePath(getViewRootPath().getChannel(), view.getViewPath());
+        } else {
+            /* else, we use a child directory in the workspace/viewRoot */
+            viewPath = getViewRootPath().child(view.getName());
+        }
+        launcher.run(args, viewPath);
     }
 
     /** implements {@link CTFunctions#getStreamFromView(View)} **/
@@ -580,7 +601,15 @@ public abstract class ClearTool implements CTFunctions {
             args.add(path);
         }
 
-        FilePath viewPath = new FilePath(getViewRootPath(), view.getName());
+        FilePath viewPath;
+        if (view.getViewPath() != null) {
+            /* if viewPath is already defined, we use it */
+            viewPath = new FilePath(getViewRootPath().getChannel(), view.getViewPath());
+        } else {
+            /* else, we use a child directory in the workspace/viewRoot */
+            viewPath = getViewRootPath().child(view.getName());
+        }
+        
         String result;
         try {
             result = launcher.run(args, viewPath);
@@ -673,7 +702,15 @@ public abstract class ClearTool implements CTFunctions {
         args.add("-fmt", formatHandler.getFormat());
         args.add(activityName);
 
-        FilePath viewPath = new FilePath(getViewRootPath(), view.getName());
+        FilePath viewPath;
+        if (view.getViewPath() != null) {
+            /* if viewPath is already defined, we use it */
+            viewPath = new FilePath(getViewRootPath().getChannel(), view.getViewPath());
+        } else {
+            /* else, we use a child directory in the workspace/viewRoot */
+            viewPath = getViewRootPath().child(view.getName());
+        }
+        
         String result;
 
         try {
@@ -719,7 +756,16 @@ public abstract class ClearTool implements CTFunctions {
         }
         args.add(csLocation);
 
-        launcher.run(args, getViewRootPath().child(view.getName()));
+        FilePath viewPath;
+        if (view.getViewPath() != null) {
+            /* if viewPath is already defined, we use it */
+            viewPath = new FilePath(getViewRootPath().getChannel(), view.getViewPath());
+        } else {
+            /* else, we use a child directory in the workspace/viewRoot */
+            viewPath = getViewRootPath().child(view.getName());
+        }
+        
+        launcher.run(args, viewPath);
 
         configSpecFile.delete();
     }
@@ -1076,16 +1122,34 @@ public abstract class ClearTool implements CTFunctions {
 
     /** implements {@link CTFunctions#hasCheckouts(String, View)} **/
     @Override
-    public boolean hasCheckouts(String branchname, View view) throws IOException,
-            InterruptedException, ClearToolError
+    public boolean hasCheckouts(String branchname, View view, List<String> viewPaths) 
+            throws IOException, InterruptedException, ClearToolError
     {
         ArgumentListBuilder args = new ArgumentListBuilder();
         args.add("lscheckout");
         args.add("-s");
-        args.add("-avobs");
         args.add("-brtype", branchname);
+        
+        if (view.isDynamic()) {
+            args.add("-avobs");
+        } else if (viewPaths != null && viewPaths.size() > 0) {
+            args.add("-r");
+            for (String pname : viewPaths) {
+                args.add(pname);
+            }
+        } else {
+            throw new ClearToolError("Cannot search for checkouts in a snapshot view without load rules.");
+        }
 
-        FilePath viewPath = new FilePath(getViewRootPath(), view.getName());
+        FilePath viewPath;
+        if (view.getViewPath() != null) {
+            /* if viewPath is already defined, we use it */
+            viewPath = new FilePath(getViewRootPath().getChannel(), view.getViewPath());
+        } else {
+            /* else, we use a child directory in the workspace/viewRoot */
+            viewPath = getViewRootPath().child(view.getName());
+        }
+        
         String result = launcher.run(args, viewPath);
 
         return result.trim().length() > 0;

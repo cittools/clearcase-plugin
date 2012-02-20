@@ -82,7 +82,7 @@ public class SnapshotCheckoutAction extends CheckoutAction {
                 logger.log(e.toString());
             }
         }
-        viewExists = viewRegistered && oldViewUuid.equals(view.getUuid());
+        viewExists = viewRegistered && oldViewUuid.equals(existingView.getUuid());
         
         
         ConfigSpec jobConfSpec = new ConfigSpec(cleartool.getEnv().expand(configSpec));

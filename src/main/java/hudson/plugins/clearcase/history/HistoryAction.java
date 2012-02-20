@@ -93,7 +93,7 @@ public abstract class HistoryAction {
             throws IOException, InterruptedException, ClearToolError 
     {
         for (String branch : branchNames) {
-            if (cleartool.hasCheckouts(branch, view)) {
+            if (cleartool.hasCheckouts(branch, view, viewPaths)) {
                 String message = "There are checkouts in the branch: %s. No build has been triggered.";
                 throw new ClearToolError(String.format(message, branch));
             }

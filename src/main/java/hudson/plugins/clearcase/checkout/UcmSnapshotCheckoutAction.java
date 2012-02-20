@@ -86,7 +86,7 @@ public class UcmSnapshotCheckoutAction extends CheckoutAction {
                 logger.log(e.toString());
             }
         }
-        viewExists = viewRegistered && oldViewUuid.equals(view.getUuid());
+        viewExists = viewRegistered && oldViewUuid.equals(existingView.getUuid());
         
         if (viewExists) {
             boolean correctStream = false;

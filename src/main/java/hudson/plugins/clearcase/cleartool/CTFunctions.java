@@ -564,7 +564,7 @@ public interface CTFunctions {
      * @throws ClearToolError
      */
     boolean
-    hasCheckouts(String branch, View view)
+    hasCheckouts(String branch, View view, List<String> viewPaths)
     throws IOException, InterruptedException, ClearToolError;
     
     

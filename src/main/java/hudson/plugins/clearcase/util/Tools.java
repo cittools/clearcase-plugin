@@ -5,7 +5,6 @@ import hudson.model.AbstractBuild;
 import hudson.model.StringParameterValue;
 import hudson.remoting.Callable;
 
-import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.text.DateFormat;
@@ -15,7 +14,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
-import java.util.regex.Pattern;
 
 public class Tools {
 

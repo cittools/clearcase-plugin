@@ -115,32 +115,6 @@ public class ClearCaseUcmSCMTest {
         Assert.assertEquals("jacky_${UNBOUND_VARIABLE}", scm2.getNormalizedViewName());
     }
 
-    @Test
-    public void getExtendedViewPathTest() throws Exception {
-        FilePath workspace = new FilePath(new File("/path/to/workspace"));
-        String viewDrive = "/view/drive/";
-        FilePath viewDrivePath = new FilePath(new File(viewDrive));
-        boolean useDynamicView = false;
-        EnvVars env = new EnvVars("USER", "jacky", "MACHINE", "computer1");
-
-        ClearCaseUcmSCM scmNull = new ClearCaseUcmSCM(null, null, false, false, null, null,
-                useDynamicView, null, 0, null, false, "", "");
-        Assert.assertEquals(workspace.getRemote(), scmNull.getExtendedViewPath(workspace));
-
-        useDynamicView = true;
-        ClearCaseUcmSCM scmDynamicView = new ClearCaseUcmSCM("${USER} ${MACHINE} hudson", null,
-                false, false, null, null, useDynamicView, viewDrive, 0, null, false, "", "");
-        scmDynamicView.setEnv(env);
-        Assert.assertEquals(viewDrivePath.child("jacky_computer1_hudson").getRemote(),
-                scmDynamicView.getExtendedViewPath(workspace));
-
-        useDynamicView = false;
-        ClearCaseUcmSCM scmSnapshot = new ClearCaseUcmSCM("${USER} ${MACHINE} hudson", null, false,
-                false, null, null, useDynamicView, viewDrive, 0, null, false, "", "");
-        scmSnapshot.setEnv(env);
-        Assert.assertEquals(workspace.child("jacky_computer1_hudson").getRemote(), scmSnapshot
-                .getExtendedViewPath(workspace));
-    }
 
     @Test
     public void publishEnvVarsTest() throws Exception {

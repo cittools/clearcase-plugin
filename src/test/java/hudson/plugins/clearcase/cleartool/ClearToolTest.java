@@ -873,11 +873,18 @@ public class ClearToolTest {
     public void getSnapshotViewUuidWindowsTest() throws Exception {
         PowerMockito.mockStatic(Tools.class);
         when(Tools.isWindows(any(FilePath.class))).thenReturn(true);
-        String viewFolder = this.getClass().getResource("test_snapshot_view_windows").getFile();
-
+        
+        String viewFolder = this.getClass().getResource(".").getFile();
+        String viewDat = "ws_oid:azefa654abbcc6546598798797898 view_uuid:64163232363525zzeaazeaz2";
+        FilePath viewDatFile = new FilePath(new File(viewFolder)).child("view.dat");
+        
+        viewDatFile.write(viewDat, "ASCII");
+        
         String uuid = ct.getSnapshotViewUuid(new FilePath(new File(viewFolder)));
 
         assertEquals("64163232363525zzeaazeaz2", uuid);
+        
+        viewDatFile.delete();
     }
 
     @Test
@@ -885,12 +892,18 @@ public class ClearToolTest {
     public void getSnapshotViewUuidUnixTest() throws Exception {
         PowerMockito.mockStatic(Tools.class);
         when(Tools.isWindows(any(FilePath.class))).thenReturn(false);
-
-        String viewFolder = this.getClass().getResource("test_snapshot_view_unix").getFile();
-
+        
+        String viewFolder = this.getClass().getResource(".").getFile();
+        String viewDat = "ws_oid:azefa654abbcc6546598798797898 view_uuid:64163232363525zzeaazeaz2";
+        FilePath viewDatFile = new FilePath(new File(viewFolder)).child(".view.dat");
+        
+        viewDatFile.write(viewDat, "ASCII");
+        
         String uuid = ct.getSnapshotViewUuid(new FilePath(new File(viewFolder)));
 
         assertEquals("64163232363525zzeaazeaz2", uuid);
+        
+        viewDatFile.delete();
     }
 
     @Test
@@ -919,15 +932,60 @@ public class ClearToolTest {
     }
 
     @Test
-    public void hasCheckoutsTest() throws Exception {
+    public void hasCheckoutsNoneTest() throws Exception {
+        when(launcher.run(any(ArgumentListBuilder.class), any(FilePath.class))).thenReturn("");
+        View view = new View("viewname");
+        view.setDynamic(true);
+        assertFalse(ct.hasCheckouts("branch", view, null));
+    }
+    
+    @Test
+    public void hasCheckoutsSnapshotTest() throws Exception {
         when(launcher.run(any(ArgumentListBuilder.class), any(FilePath.class))).thenReturn(
                 ctResult("lscheckout"));
-        assertTrue(ct.hasCheckouts("branch", new View("viewname")));
-
-        when(launcher.run(any(ArgumentListBuilder.class), any(FilePath.class))).thenReturn("");
-        assertFalse(ct.hasCheckouts("branch", new View("viewname")));
+        
+        String branch = "branch";
+        View view = new View("viewname");
+        List<String> viewPaths = new ArrayList<String>();
+        viewPaths.add("vobs/vob1/comp1");
+        viewPaths.add("vobs/vob2/comp2");
+        
+        ArgumentListBuilder args = new ArgumentListBuilder("lscheckout", "-s", 
+                                                           "-brtype", branch, 
+                                                           "-r", 
+                                                           "vobs/vob1/comp1", 
+                                                           "vobs/vob2/comp2");
+        assertTrue(ct.hasCheckouts(branch, view, viewPaths));
+        verify(launcher).run(argThat(new IsSameArgs(args)), eq(workspace.child(view.getName())));
+        
+        try {
+            ct.hasCheckouts(branch, view, null);
+            fail("This test should fail with error: " +
+            		"'Cannot search for checkouts in a snapshot view without load rules'");
+        } catch (ClearToolError e) {
+            /* pass */
+        }
     }
 
+    @Test
+    public void hasCheckoutsDynamicTest() throws Exception {
+        when(launcher.run(any(ArgumentListBuilder.class), any(FilePath.class))).thenReturn(
+                ctResult("lscheckout"));
+        
+        String branch = "branch";
+        View view = new View("viewname");
+        view.setDynamic(true);
+        List<String> viewPaths = new ArrayList<String>();
+        viewPaths.add("vobs/vob1/comp1");
+        viewPaths.add("vobs/vob2/comp2");
+        
+        ArgumentListBuilder args = new ArgumentListBuilder("lscheckout", "-s", 
+                                                           "-brtype", branch, 
+                                                           "-avobs");
+        assertTrue(ct.hasCheckouts(branch, view, viewPaths));
+        verify(launcher).run(argThat(new IsSameArgs(args)), eq(workspace.child(view.getName())));
+    }
+    
     /*******************************************************************************************/
     /*******************************************************************************************/
     /*******************************************************************************************/

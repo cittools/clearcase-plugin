@@ -495,7 +495,8 @@ public abstract class AbstractClearCaseSCM extends SCM {
         CTLauncher ctLauncher = new CTLauncher(executable, workspace, nodeRoot, env, logFile, 
                 launcher);
         if (this.useDynamicView) {
-            FilePath viewPath = new FilePath(workspace.getChannel(), this.viewDrive);
+            String drive = Tools.convertPathForOS(this.viewDrive, !launcher.isUnix());
+            FilePath viewPath = new FilePath(workspace.getChannel(), drive);
             return new ClearToolDynamic(ctLauncher, viewPath);
         } else {
             return new ClearToolSnapshot(ctLauncher);
@@ -579,8 +580,20 @@ public abstract class AbstractClearCaseSCM extends SCM {
         EnvVars env = lastBuild.getEnvironment(listener);
         if (getEnv() == null) this.setEnv(env);
         
-        String nodeName = Computer.currentComputer().getName();
-        FilePath nodeRoot = Computer.currentComputer().getNode().getRootPath();
+        Node node = null;
+        if (project.getAssignedLabel() != null) {
+            for (Node n : project.getAssignedLabel().getNodes()) {
+                if (n.getChannel() == launcher.getChannel()) {
+                    node = n;
+                    break;
+                }
+            }
+        } else {
+            node = Computer.currentComputer().getNode();
+        }
+        
+        String nodeName = node.getNodeName();
+        FilePath nodeRoot = node.getRootPath();
         ClearCaseConfiguration config = fetchClearCaseConfig(nodeName);
         ClearTool ct = createClearTool(config.getCleartoolExe(), workspace, nodeRoot, env, null, launcher);
         HistoryAction historyAction = createHistoryAction(ct);
@@ -659,7 +672,7 @@ public abstract class AbstractClearCaseSCM extends SCM {
             return workspace.getRemote();
         } else {
             if (isUseDynamicView()) {
-                FilePath root = new FilePath(new File(getViewRoot(workspace)));
+                FilePath root = new FilePath(workspace.getChannel(), getViewRoot(workspace));
                 return root.child(getNormalizedViewName()).getRemote();
             } else {
                 return workspace.child(getNormalizedViewName()).getRemote();
