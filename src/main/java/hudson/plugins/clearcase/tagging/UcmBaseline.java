@@ -24,6 +24,12 @@
  */
 package hudson.plugins.clearcase.tagging;
 
+import static hudson.plugins.clearcase.AbstractClearCaseSCM.CLEARCASE_VIEWNAME_ENVSTR;
+import static hudson.plugins.clearcase.AbstractClearCaseSCM.CLEARCASE_VIEWPATH_ENVSTR;
+import static hudson.plugins.clearcase.AbstractClearCaseSCM.CLEARCASE_VIEWTYPE_ENVSTR;
+import static hudson.plugins.clearcase.AbstractClearCaseSCM.DYNAMIC_VIEW;
+import static hudson.plugins.clearcase.AbstractClearCaseSCM.ORIGINAL_WORKSPACE_ENVSTR;
+import static hudson.plugins.clearcase.ClearCaseUcmSCM.CLEARCASE_STREAM_ENVSTR;
 import hudson.EnvVars;
 import hudson.Extension;
 import hudson.FilePath;
@@ -46,8 +52,8 @@ import hudson.plugins.clearcase.objects.CompositeComponent;
 import hudson.plugins.clearcase.objects.Stream;
 import hudson.plugins.clearcase.objects.Stream.LockState;
 import hudson.plugins.clearcase.objects.View;
+import hudson.plugins.clearcase.util.CCParametersAction;
 import hudson.plugins.clearcase.util.ClearToolError;
-import hudson.plugins.clearcase.util.Tools;
 import hudson.tasks.BuildStepMonitor;
 import hudson.tasks.Notifier;
 
@@ -59,7 +65,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.kohsuke.stapler.DataBoundConstructor;
-
 
 /**
  * UcmMakeBaseline creates baselines on a ClearCase stream and changes their promotion level
@@ -128,17 +133,19 @@ import org.kohsuke.stapler.DataBoundConstructor;
  */
 public class UcmBaseline extends Notifier {
 
-    /***************
-     ** CONSTANTS **
-     ***************/
+    ///////////////////////////////////////////////////////////////////////////////////////////
+    /// CONSTANTS ///////////////////////////////////////////////////////////////////////////// 
+    ///////////////////////////////////////////////////////////////////////////////////////////
+    
     public static final String ENV_CC_BASELINE = "CC_BASELINE_";
     @Extension
     public static final UcmBaselineDescriptor 
                                  UCM_BL_DESCRIPTOR = new UcmBaselineDescriptor();
 
-    /************
-     ** FIELDS **
-     ************/
+    ///////////////////////////////////////////////////////////////////////////////////////////
+    /// FIELDS //////////////////////////////////////////////////////////////////////////////// 
+    ///////////////////////////////////////////////////////////////////////////////////////////
+    
     // transient fields
     private transient boolean lockStream = false; //@deprecated
     
@@ -156,9 +163,10 @@ public class UcmBaseline extends Notifier {
     
     private final String components;
     
-    /*****************
-     ** CONSTRUCTOR ** 
-     *****************/
+    ///////////////////////////////////////////////////////////////////////////////////////////
+    /// CONSTRUCTOR /////////////////////////////////////////////////////////////////////////// 
+    ///////////////////////////////////////////////////////////////////////////////////////////
+    
     @DataBoundConstructor
     public UcmBaseline(String namePattern,
                        String commentPattern,
@@ -184,9 +192,9 @@ public class UcmBaseline extends Notifier {
         this.components = components;
     }
 
-    /**************
-     ** OVERRIDE ** 
-     **************/ 
+    ///////////////////////////////////////////////////////////////////////////////////////////
+    /// OVERRIDE ////////////////////////////////////////////////////////////////////////////// 
+    ///////////////////////////////////////////////////////////////////////////////////////////
     
     @Override
     public UcmBaselineDescriptor getDescriptor() {
@@ -203,9 +211,10 @@ public class UcmBaseline extends Notifier {
         return BuildStepMonitor.BUILD;
     } 
     
-    /******************
-     ** MAIN PROCESS ** 
-     ******************/ 
+    ///////////////////////////////////////////////////////////////////////////////////////////
+    /// MAIN PROCESS ////////////////////////////////////////////////////////////////////////// 
+    ///////////////////////////////////////////////////////////////////////////////////////////
+    
     /** {@inheritDoc} **/
     @Override
     public boolean perform(AbstractBuild<?, ?> build, Launcher l, BuildListener listener)
@@ -230,13 +239,19 @@ public class UcmBaseline extends Notifier {
                 EnvVars env = build.getEnvironment(listener);
                 String nodeName = Computer.currentComputer().getName();
                 ClearCaseConfiguration ccConfig = scm.fetchClearCaseConfig(nodeName);
-                FilePath workspace = scm.getOriginalWorkspace();
-                if (workspace == null) {
-                	workspace = build.getWorkspace();
+                FilePath workspace;
+                StringParameterValue wsParam = CCParametersAction.getBuildParameter(build,
+                        ORIGINAL_WORKSPACE_ENVSTR);
+                if (wsParam != null) {
+                    workspace = new FilePath(build.getWorkspace().getChannel(), wsParam.value);
+                } else {
+                    workspace = build.getWorkspace();
                 }
                 ClearTool ct = scm.createClearTool(ccConfig.getCleartoolExe(),
                 		workspace, build.getBuiltOn().getRootPath(), env, ctLogFile, null);
-                View view = scm.getView();
+                
+                View view = getBuildView(build);
+                
                 Stream stream = view.getStream();
                 
                 ///// check stream lock state /////////////////////////////////////////////////////
@@ -344,13 +359,47 @@ public class UcmBaseline extends Notifier {
         return true;
     } // perform()
 
-
-
     
+    ///////////////////////////////////////////////////////////////////////////////////////////
+    /// PRIVATE METHODS /////////////////////////////////////////////////////////////////////// 
+    ///////////////////////////////////////////////////////////////////////////////////////////
+    
+    private View getBuildView(AbstractBuild<?, ?> build) throws ClearToolError {
+        View view = null;
+        StringParameterValue nameParam = CCParametersAction.getBuildParameter(build,
+                CLEARCASE_VIEWNAME_ENVSTR);
+        if (nameParam == null) {
+            throw new ClearToolError("Could not find clearcase view name into build parameters.");
+        } else {
+            view = new View(nameParam.value);
+        }
 
-    /*********************
-     ** PRIVATE METHODS ** 
-     *********************/
+        StringParameterValue pathParam = CCParametersAction.getBuildParameter(build,
+                CLEARCASE_VIEWPATH_ENVSTR);
+        if (pathParam == null) {
+            throw new ClearToolError("Could not find clearcase view path into build parameters.");
+        } else {
+            view.setViewPath(pathParam.value);
+        }
+
+        StringParameterValue streamParam = CCParametersAction.getBuildParameter(build,
+                CLEARCASE_STREAM_ENVSTR);
+        if (streamParam == null) {
+            throw new ClearToolError("Could not find clearcase stream into build parameters.");
+        } else {
+            view.setStream(new Stream(streamParam.value));
+        }
+
+        StringParameterValue typeParam = CCParametersAction.getBuildParameter(build,
+                CLEARCASE_VIEWTYPE_ENVSTR);
+        if (typeParam == null) {
+            throw new ClearToolError("Could not find clearcase view type into build parameters.");
+        } else {
+            view.setDynamic(DYNAMIC_VIEW.equals(typeParam.value));
+        }
+        return view;
+    }
+
     
     private List<Component> resolveComponents(Stream stream, ClearTool ct)
             throws IOException, InterruptedException, ClearToolError
@@ -498,7 +547,6 @@ public class UcmBaseline extends Notifier {
      */
     private void publishBaselinesAsParams(AbstractBuild<?, ?> build, List<Baseline> baselines) {
         if (baselines != null && !baselines.isEmpty()) {
-            List<StringParameterValue> parameters = Tools.getCCParameters(build);
             int i = 1;
             for(Baseline bl : baselines){
                 String paramKey = ENV_CC_BASELINE + i++;
@@ -515,14 +563,15 @@ public class UcmBaseline extends Notifier {
                         description += " <i><b>(READ ONLY)</b></i>";
                     }
                 }
-                parameters.add(new StringParameterValue(paramKey, bl.toString(), description));
+                CCParametersAction.addBuildParameter(build,
+                        new StringParameterValue(paramKey, bl.toString(), description));
             }
         }
     }
 
-    /*************
-     ** GETTERS **
-     *************/
+    ///////////////////////////////////////////////////////////////////////////////////////////
+    /// GETTERS /////////////////////////////////////////////////////////////////////////////// 
+    ///////////////////////////////////////////////////////////////////////////////////////////
     
     public String getNamePattern() {
         return namePattern;

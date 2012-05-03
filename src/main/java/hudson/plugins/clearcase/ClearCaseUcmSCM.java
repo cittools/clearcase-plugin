@@ -40,8 +40,8 @@ import hudson.plugins.clearcase.log.ClearCaseLogger;
 import hudson.plugins.clearcase.objects.Component;
 import hudson.plugins.clearcase.objects.Stream;
 import hudson.plugins.clearcase.objects.View;
+import hudson.plugins.clearcase.util.CCParametersAction;
 import hudson.plugins.clearcase.util.ClearToolError;
-import hudson.plugins.clearcase.util.Tools;
 import hudson.scm.ChangeLogParser;
 
 import java.io.IOException;
@@ -66,7 +66,7 @@ public class ClearCaseUcmSCM extends AbstractClearCaseSCM {
     /*******************************
      **** FIELDS *******************
      *******************************/
-    private static final String CLEARCASE_STREAM_ENVSTR = "CLEARCASE_STREAM";
+    public static final String CLEARCASE_STREAM_ENVSTR = "CLEARCASE_STREAM";
 
     private final String stream;
     private transient String resolvedStreamName;
@@ -81,7 +81,6 @@ public class ClearCaseUcmSCM extends AbstractClearCaseSCM {
             boolean filteringOutDestroySubBranchEvent, boolean useUpdate, String excludedRegions,
             String loadRules, boolean useDynamicView, String viewDrive, int multiSitePollBuffer,
             String clearcaseConfig, boolean doNotUpdateConfigSpec, String customWorkspace,
-
             String stream)
     {
         super(viewName, mkviewOptionalParam, filteringOutDestroySubBranchEvent, useUpdate,
@@ -208,10 +207,9 @@ public class ClearCaseUcmSCM extends AbstractClearCaseSCM {
     @Override
     protected void publishBuildVariables(AbstractBuild<?, ?> build) {
         super.publishBuildVariables(build);
-        List<StringParameterValue> parameters = Tools.getCCParameters(build);
         if (getResolvedStreamName() != null) {
-            parameters.add(new StringParameterValue(CLEARCASE_STREAM_ENVSTR,
-                    getResolvedStreamName()));
+            CCParametersAction.addBuildParameter(build, new StringParameterValue(
+                    CLEARCASE_STREAM_ENVSTR, getResolvedStreamName()));
         }
     }
 

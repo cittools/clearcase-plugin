@@ -1,8 +1,6 @@
 package hudson.plugins.clearcase.util;
 
 import hudson.FilePath;
-import hudson.model.AbstractBuild;
-import hudson.model.StringParameterValue;
 import hudson.remoting.Callable;
 
 import java.net.InetAddress;
@@ -127,21 +125,7 @@ public class Tools {
 		return pattern.toString();
 	}
 
-	public static List<StringParameterValue> getCCParameters(
-			AbstractBuild<?, ?> build) {
-		List<CCParametersAction> actions = build
-				.getActions(CCParametersAction.class);
 
-		CCParametersAction ccAction;
-		if (actions.isEmpty()) {
-			ccAction = new CCParametersAction();
-			build.addAction(ccAction);
-		} else {
-			ccAction = actions.get(0);
-		}
-
-		return ccAction.getParameters();
-	}
 
 	public static boolean isWindows(FilePath path) {
 		// Windows can handle '/' as a path separator but Unix can't,

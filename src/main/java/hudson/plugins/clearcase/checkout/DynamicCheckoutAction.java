@@ -24,12 +24,14 @@
  */
 package hudson.plugins.clearcase.checkout;
 
-import hudson.FilePath;
 import hudson.model.TaskListener;
+import hudson.model.AbstractBuild;
+import hudson.model.StringParameterValue;
 import hudson.plugins.clearcase.cleartool.ClearTool;
 import hudson.plugins.clearcase.log.ClearCaseLogger;
 import hudson.plugins.clearcase.objects.ConfigSpec;
 import hudson.plugins.clearcase.objects.View;
+import hudson.plugins.clearcase.util.CCParametersAction;
 import hudson.plugins.clearcase.util.ClearToolError;
 
 import java.io.IOException;
@@ -56,7 +58,7 @@ public class DynamicCheckoutAction extends CheckoutAction {
 
 
     @Override
-    public boolean checkout(FilePath workspace, TaskListener listener)
+    public boolean checkout(@SuppressWarnings("rawtypes") AbstractBuild build, TaskListener listener)
             throws IOException, InterruptedException, ClearToolError
     {
         boolean viewExists = false, createView = false;
@@ -97,6 +99,9 @@ public class DynamicCheckoutAction extends CheckoutAction {
 
             /* resolution of variables in the configspec */
             ConfigSpec jobConfSpec = new ConfigSpec(cleartool.getEnv().expand(configSpec));
+            /* we store the config spec in order to restore it at the end of the build */
+            CCParametersAction.addBuildParameter(build, new StringParameterValue(
+                    ORIGINAL_CONFIG_SPEC, jobConfSpec.getValue()));
             /* we can ignore load rules in dynamic views */
             jobConfSpec.removeLoadRules();
             /* We add "-time" rules next to the element with "LATEST" rules.

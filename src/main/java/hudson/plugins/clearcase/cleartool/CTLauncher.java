@@ -98,6 +98,7 @@ public class CTLauncher {
         ByteArrayOutputStream outStream = new ByteArrayOutputStream();
         DataOutputStream logStream;
         
+        
         if (logFile == null) {
             logStream = new DataOutputStream(new NullOutputStream()); 
         } else {
@@ -106,19 +107,25 @@ public class CTLauncher {
         
         ForkOutputStream forkStream = new ForkOutputStream(outStream, logStream);
         
-        logStream.writeBytes(">>> " + cmd.toStringWithQuote() + "\n");
-        
-        ProcStarter starter = launcher.launch();
-        starter.cmds(cmd);
-        starter.envs(this.env);
-        starter.stdout(forkStream);
-        starter.pwd(path);
+        int code;
+        String cleartoolResult;
 
-        int code = launcher.launch(starter).join();
+        try {
+            logStream.writeBytes(">>> " + cmd.toStringWithQuote() + "\n");
+            
+            ProcStarter starter = launcher.launch();
+            starter.cmds(cmd);
+            starter.envs(this.env);
+            starter.stdout(forkStream);
+            starter.pwd(path);
 
-        String cleartoolResult = outStream.toString();
-        logStream.writeBytes("\n\n"); // to separate the commands
-        forkStream.close();
+            code = launcher.launch(starter).join();
+
+            cleartoolResult = outStream.toString();
+            logStream.writeBytes("\n\n"); // to separate the commands
+        } finally {
+            forkStream.close();
+        }
 
         if (cleartoolResult.contains("cleartool: Error") || code != 0) {
             throw new ClearToolError(cmd.toStringWithQuote(), cleartoolResult, code, path);

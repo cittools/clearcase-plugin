@@ -5,14 +5,14 @@
     <parent>
         <groupId>org.jenkins-ci.plugins</groupId>
         <artifactId>plugin</artifactId>
-        <version>1.424.2</version>
+        <version>1.447</version>
     </parent>
 
     <groupId>com.thalesgroup.hudson.plugins</groupId>
     <artifactId>clearcase-thales</artifactId>
     <packaging>hpi</packaging>
-    <name>Hudson ClearCase Plug-in</name>
-    <version>2.7.1</version>
+    <name>Hudson ClearCase Plug-in (Thales Release)</name>
+    <version>2.7.3</version>
 
     <licenses>
         <license>

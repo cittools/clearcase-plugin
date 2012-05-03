@@ -1,8 +1,8 @@
 package hudson.plugins.clearcase.util;
 
 import hudson.EnvVars;
-import hudson.model.AbstractBuild;
 import hudson.model.EnvironmentContributingAction;
+import hudson.model.AbstractBuild;
 import hudson.model.StringParameterValue;
 
 import java.util.ArrayList;
@@ -43,6 +43,7 @@ public class CCParametersAction implements EnvironmentContributingAction, Staple
         return DISPLAY_NAME;
     }
 
+
     @Override
     public void buildEnvVars(AbstractBuild<?, ?> build, EnvVars env) {
         for (StringParameterValue p : parameters) {
@@ -80,6 +81,28 @@ public class CCParametersAction implements EnvironmentContributingAction, Staple
             }
         }
         return null;
+    }
+    
+    public static StringParameterValue getBuildParameter(AbstractBuild<?, ?> build, String key) {
+        CCParametersAction action = build.getAction(CCParametersAction.class);
+
+        if (action == null) {
+            action = new CCParametersAction();
+            build.addAction(action);
+        }
+
+        return action.getParameter(key);
+    }
+    
+    public static void addBuildParameter(AbstractBuild<?, ?> build, StringParameterValue param) {
+        CCParametersAction action = build.getAction(CCParametersAction.class);
+
+        if (action == null) {
+            action = new CCParametersAction();
+            build.addAction(action);
+        }
+
+        action.getParameters().add(param);
     }
     
 }

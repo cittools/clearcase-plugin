@@ -24,8 +24,8 @@
  */
 package hudson.plugins.clearcase.checkout;
 
-import hudson.FilePath;
 import hudson.model.TaskListener;
+import hudson.model.AbstractBuild;
 import hudson.plugins.clearcase.cleartool.ClearTool;
 import hudson.plugins.clearcase.log.ClearCaseLogger;
 import hudson.plugins.clearcase.objects.View;
@@ -34,6 +34,8 @@ import hudson.plugins.clearcase.util.ClearToolError;
 import java.io.IOException;
 
 public abstract class CheckoutAction {
+    
+    public static final String ORIGINAL_CONFIG_SPEC = "ORIGINAL_CONFIG_SPEC";
     
     /************
      ** FIELDS **
@@ -62,7 +64,7 @@ public abstract class CheckoutAction {
      ** CHECKOUT METHOD **
      *********************/
     public abstract boolean 
-    checkout(FilePath workspace, TaskListener listener) 
+    checkout(@SuppressWarnings("rawtypes") AbstractBuild build, TaskListener listener) 
     throws IOException, InterruptedException, ClearToolError;
     
 

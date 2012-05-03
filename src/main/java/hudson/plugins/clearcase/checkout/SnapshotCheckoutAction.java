@@ -26,6 +26,7 @@ package hudson.plugins.clearcase.checkout;
 
 import hudson.FilePath;
 import hudson.model.TaskListener;
+import hudson.model.AbstractBuild;
 import hudson.plugins.clearcase.cleartool.ClearTool;
 import hudson.plugins.clearcase.log.ClearCaseLogger;
 import hudson.plugins.clearcase.objects.ConfigSpec;
@@ -55,10 +56,11 @@ public class SnapshotCheckoutAction extends CheckoutAction {
 
 
     @Override
-    public boolean checkout(FilePath workspace, TaskListener listener)
+    public boolean checkout(@SuppressWarnings("rawtypes") AbstractBuild build, TaskListener listener)
 			throws IOException, InterruptedException, ClearToolError 
 	{
 	    boolean viewRegistered, viewFolderExists, viewExists, createView;
+	    FilePath workspace = build.getWorkspace();
 	    String oldViewUuid = "null";
 	    createView = false;
 	    

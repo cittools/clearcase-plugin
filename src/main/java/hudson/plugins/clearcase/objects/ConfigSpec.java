@@ -26,10 +26,10 @@ public class ConfigSpec {
             Pattern.MULTILINE);
     /*
      * This regular expression is quite tricky. It matches any config spec line that contains a
-     * "LATEST" rule but only if that line does NOT already contain a "-time" rule.
+     * "LATEST" and allows to isolate any existing "-time XXXXXXXXX" rule.
      */
     private static final Pattern LATEST_PATTERN = Pattern.compile(
-            "^(.+)LATEST(?!.*\\s-time\\s.*)(.*)$", Pattern.MULTILINE);
+            "^(.+)LATEST([ \\t]+-time[ \\t]+\\S+)?(.*)$", Pattern.MULTILINE);
 
     private String value;
 
@@ -111,7 +111,7 @@ public class ConfigSpec {
         } else {
             timeStr = Tools.formatCleartoolDate(time);
         }
-        value = LATEST_PATTERN.matcher(value).replaceAll("$1LATEST -time " + timeStr + "$2");
+        value = LATEST_PATTERN.matcher(value).replaceAll("$1LATEST -time " + timeStr + "$3");
     }
 
     // // ACCESSORS ////////////////////////////////////////////////////////////

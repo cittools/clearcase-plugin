@@ -70,7 +70,7 @@ public class ClearCaseBaseSCMDescriptor extends SCMDescriptor<ClearCaseBaseSCM> 
     /** implements abstract method {@link Descriptor#getDisplayName()} */
     @Override
     public String getDisplayName() {
-        return "Base ClearCase";
+        return String.format("[%s] Base", AbstractClearCaseSCM.PLUGIN_NAME);
     }
 
     /** overrides method {@link Descriptor#configure()} */

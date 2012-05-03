@@ -31,7 +31,7 @@ public class ClearCaseUcmSCMDescriptor extends SCMDescriptor<ClearCaseUcmSCM> {
     /** implements abstract method {@link Descriptor#getDisplayName()} */
     @Override
     public String getDisplayName() {
-        return "UCM ClearCase";
+        return String.format("[%s] UCM", AbstractClearCaseSCM.PLUGIN_NAME);
     }
     
     /*******************************

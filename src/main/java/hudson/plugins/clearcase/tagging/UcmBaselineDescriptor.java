@@ -2,6 +2,7 @@ package hudson.plugins.clearcase.tagging;
 
 import static hudson.Util.fixEmptyAndTrim;
 import hudson.model.AbstractProject;
+import hudson.plugins.clearcase.AbstractClearCaseSCM;
 import hudson.plugins.clearcase.ClearCaseBaseSCM;
 import hudson.plugins.clearcase.objects.ClearCaseConfiguration;
 import hudson.plugins.clearcase.util.Tools;
@@ -31,7 +32,7 @@ public class UcmBaselineDescriptor extends BuildStepDescriptor<Publisher> {
     
     @Override
     public String getDisplayName() {
-        return "ClearCase UCM Make Baseline";
+        return String.format("[%s] Make UCM baseline", AbstractClearCaseSCM.PLUGIN_NAME);
     }
  
     @Override

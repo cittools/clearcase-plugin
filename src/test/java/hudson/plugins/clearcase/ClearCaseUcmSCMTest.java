@@ -137,8 +137,9 @@ public class ClearCaseUcmSCMTest {
     public void getViewPathsTest() throws Exception {
         FilePath workspace = new FilePath(new File("/path/to/workspace"));
 
-        String loadRules = "/vobs/VOB1/compA\nload /vobs/VOB2/compC\nvobs/VOB3/compY/folder";
-
+        String loadRules = "/vobs/VOB1/compA\nload /vobs/VOB2/compC\nvobs/VOB3/compY/${VAR}";
+        EnvVars env = new EnvVars("VAR", "value");
+        
         PowerMockito.mockStatic(Tools.class);
         when(Tools.isWindows(workspace)).thenReturn(false);
         when(Tools.convertPathForOS(Mockito.anyString(), Mockito.anyBoolean()))
@@ -146,11 +147,12 @@ public class ClearCaseUcmSCMTest {
 
         ClearCaseUcmSCM scm = new ClearCaseUcmSCM("viewName", null, false, false, null, loadRules,
                 false, null, 0, null, false, "", "");
-
+        scm.setEnv(env);
+        
         List<String> list = new ArrayList<String>();
         list.add("vobs/VOB1/compA");
         list.add("vobs/VOB2/compC");
-        list.add("vobs/VOB3/compY/folder");
+        list.add("vobs/VOB3/compY/value");
 
         Assert.assertEquals(list, scm.getViewPaths(workspace));
     }

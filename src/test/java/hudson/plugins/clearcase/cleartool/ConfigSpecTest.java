@@ -75,7 +75,8 @@ public class ConfigSpecTest {
 
         assertTrue(cs.getValue().contains(
                 ".../dev_steam/LATEST -time " + timeStr + " -mkbranch dev_steam"));
-        assertFalse(cs.getValue().contains(".../dev_steam2/LATEST -time " + timeStr));
+        assertTrue(cs.getValue().contains(
+                ".../dev_steam2/LATEST -time " + timeStr + " -mkbranch dev_steam"));
     }
 
     @Test
@@ -83,7 +84,7 @@ public class ConfigSpecTest {
         ConfigSpec cs = new ConfigSpec(SELECT_RULES);
         cs.addTimeRules(null);
         assertTrue(cs.getValue().contains(".../dev_steam/LATEST -time now -mkbranch dev_steam"));
-        assertFalse(cs.getValue().contains(".../dev_steam2/LATEST -time now"));
+        assertTrue(cs.getValue().contains(".../dev_steam2/LATEST -time now -mkbranch dev_steam"));
     }
 
 }
