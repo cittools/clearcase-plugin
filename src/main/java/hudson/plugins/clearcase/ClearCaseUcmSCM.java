@@ -69,8 +69,6 @@ public class ClearCaseUcmSCM extends AbstractClearCaseSCM {
     public static final String CLEARCASE_STREAM_ENVSTR = "CLEARCASE_STREAM";
 
     private final String stream;
-    private transient String resolvedStreamName;
-    private transient Stream streamObj;
 
     /*******************************
      **** CONSTRUCTOR **************
@@ -120,10 +118,10 @@ public class ClearCaseUcmSCM extends AbstractClearCaseSCM {
     public List<String> getBranchNames() {
         List<String> branchNames = new ArrayList<String>();
         String branch;
-        if (!this.resolvedStreamName.equals(this.stream)) {
-            branch = this.resolvedStreamName;
+        if (!stream.equals(getResolvedStreamName())) {
+            branch = getResolvedStreamName();
         } else {
-            branch = this.stream;
+            branch = stream;
         }
         if (branch.contains("@")) {
             branchNames.add(branch.split("@")[0]);
@@ -161,8 +159,7 @@ public class ClearCaseUcmSCM extends AbstractClearCaseSCM {
     /** implementation of abstract method {@link AbstractClearCaseSCM#createView()} */
     @Override
     protected View createView(String viewTag) {
-        streamObj = new Stream(getResolvedStreamName());
-        return new View(viewTag, streamObj, isUseDynamicView());
+        return new View(viewTag, new Stream(getResolvedStreamName()), isUseDynamicView());
     }
 
     /** implementation of abstract method {@link AbstractClearCaseSCM#getViewPathsForLSHistory()} */
@@ -175,10 +172,8 @@ public class ClearCaseUcmSCM extends AbstractClearCaseSCM {
         List<String> viewPathsForLSHistory = new ArrayList<String>();
         List<String> rwComponentPaths = new ArrayList<String>();
 
-        if (streamObj != null) {
-            for (Component comp : ct.getRWComponents(streamObj)) {
-                rwComponentPaths.add(ct.getComponentRootPath(comp));
-            }
+        for (Component comp : ct.getRWComponents(new Stream(getResolvedStreamName()))) {
+            rwComponentPaths.add(ct.getComponentRootPath(comp));
         }
 
         for (String path : viewPaths) {
@@ -222,10 +217,11 @@ public class ClearCaseUcmSCM extends AbstractClearCaseSCM {
     }
 
     public String getResolvedStreamName() {
-        if (resolvedStreamName == null && env != null) {
-            resolvedStreamName = env.expand(stream);
+        if (this.getEnv() != null) {
+            return this.getEnv().expand(stream);
+        } else {
+            return null;
         }
-        return resolvedStreamName;
     }
 
 }

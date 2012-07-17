@@ -109,10 +109,8 @@ public abstract class AbstractClearCaseSCM extends SCM {
     // /////////////////////////////////////////////////////////////////////////////////////////
 
     /* TRANSIENT */
-    protected transient EnvVars env;
-    private transient String normalizedViewName;
+    private transient EnvVars env;
     private transient List<String> lsHistoryPaths;
-    protected transient View view;
     private transient String hostName;
 
     /* SERIALIZED */
@@ -522,23 +520,6 @@ public abstract class AbstractClearCaseSCM extends SCM {
         }
     }
 
-    /**
-     * Returns a normalized view name that will be used in cleartool commands. It will replace
-     * ${JOB_NAME} with the name of the job, ${USERNAME} with the name of the user. This way it will
-     * be easier to add new jobs without trying to find an unique view name. It will also replace
-     * invalid chars from a view name.
-     * 
-     * @param env
-     *            the environment against which to resolve the variables in the view pattern
-     * @return a string containing no invalid chars.
-     */
-    private String generateNormalizedViewName(EnvVars env) {
-        String normViewName = env.expand(getViewName());
-        if (this.hostName != null) {
-            normViewName = HOSTNAME_REX.matcher(normViewName).replaceAll(this.hostName);
-        }
-        return normViewName.replaceAll("[\\s\\\\\\/:\\?\\*\\|]+", "_");
-    }
 
     private static final Pattern HOSTNAME_REX = Pattern.compile("\\$\\{(HOSTNAME|COMPUTERNAME)\\}",
             Pattern.CASE_INSENSITIVE);
@@ -663,10 +644,7 @@ public abstract class AbstractClearCaseSCM extends SCM {
     // /////////////////////////////////////////////////////////////////////////////////////////
 
     private View getView() {
-        if (view == null) {
-            view = createView(getNormalizedViewName());
-        }
-        return view;
+        return createView(getNormalizedViewName());
     }
 
     private String[] getExcludedRegionsNormalized() {
@@ -743,11 +721,26 @@ public abstract class AbstractClearCaseSCM extends SCM {
     // / GETTERS ///////////////////////////////////////////////////////////////////////////////
     // /////////////////////////////////////////////////////////////////////////////////////////
 
+    /**
+     * Returns a normalized view name that will be used in cleartool commands. It will replace
+     * ${JOB_NAME} with the name of the job, ${USERNAME} with the name of the user. This way it will
+     * be easier to add new jobs without trying to find an unique view name. It will also replace
+     * invalid chars from a view name.
+     * 
+     * @param env
+     *            the environment against which to resolve the variables in the view pattern
+     * @return a string containing no invalid chars.
+     */
     /* package */String getNormalizedViewName() {
-        if (normalizedViewName == null && this.getEnv() != null) {
-            normalizedViewName = generateNormalizedViewName(this.getEnv());
+        if (env != null) {
+            String normViewName = env.expand(getViewName());
+            if (hostName != null) {
+                normViewName = HOSTNAME_REX.matcher(normViewName).replaceAll(hostName);
+            }
+            return normViewName.replaceAll("[\\s\\\\\\/:\\?\\*\\|]+", "_"); 
+        } else {
+            return null;
         }
-        return normalizedViewName;
     }
 
     public boolean isUseDynamicView() {
