@@ -37,6 +37,7 @@ import hudson.plugins.clearcase.log.ClearCaseLogger;
 import hudson.plugins.clearcase.objects.View;
 import hudson.plugins.clearcase.util.ClearToolError;
 import hudson.scm.ChangeLogParser;
+import hudson.scm.SCMDescriptor;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -111,7 +112,7 @@ public class ClearCaseBaseSCM extends AbstractClearCaseSCM {
 
     /** override method {@link hudson.scm.SCM#getDescriptor()} */
     @Override
-    public ClearCaseBaseSCMDescriptor getDescriptor() {
+    public SCMDescriptor<?> getDescriptor() {
         return ClearCaseBaseSCM.BASE_DESCRIPTOR;
     }
     

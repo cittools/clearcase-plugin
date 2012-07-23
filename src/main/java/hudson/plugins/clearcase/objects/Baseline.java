@@ -3,7 +3,7 @@ package hudson.plugins.clearcase.objects;
 public class Baseline {
     
     public static enum PromotionLevel {
-        REJECTED, BUILT, RELEASED, NONE;
+        INITIAL, BUILT, TESTED, RELEASED, REJECTED, NONE;
         
         public static final String DEFAULT_REJECTED = "REJECTED";
         public static final String DEFAULT_BUILT = "BUILT";

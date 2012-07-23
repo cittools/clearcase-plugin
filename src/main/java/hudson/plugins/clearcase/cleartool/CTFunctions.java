@@ -150,7 +150,7 @@ public interface CTFunctions {
      * <ul>
      * <li>Evaluating time rules with nonabsolute specifications (for example,
      * now, Tuesday)</li>
-     * <li>Reevaluating –config rules, possibly selecting different derived
+     * <li>Reevaluating ï¿½config rules, possibly selecting different derived
      * objects than previously</li>
      * <li>Re-reading files named in include rules</li>
      * </ul>
@@ -568,5 +568,52 @@ public interface CTFunctions {
     throws IOException, InterruptedException, ClearToolError;
     
     
+    /**
+     * Deliver the specified baseline from the source Stream into the target Stream.
+     * If cancelIfNonTrivial is true and the deliver cannot be done without user intervention,
+     * cancel it.
+     * 
+     * @param sourceStream
+     * @param targetStream
+     * @param targetView
+     * @param baseline
+     * @return
+     * @throws IOException
+     * @throws InterruptedException
+     * @throws ClearToolError
+     */
+    boolean
+    deliver(Stream sourceStream, Stream targetStream, View targetView, Baseline baseline, 
+            boolean cancelIfNonTrivial)
+    throws IOException, InterruptedException, ClearToolError;
+    
+    /**
+     * Complete a deliver in progress.
+     * 
+     * @param sourceStream
+     * @param targetStream
+     * @param targetView
+     * @param baseline
+     * @throws IOException
+     * @throws InterruptedException
+     * @throws ClearToolError
+     */
+    void
+    deliverComplete(Stream sourceStream, Stream targetStream, View targetView, Baseline baseline)
+    throws IOException, InterruptedException, ClearToolError;
+    
+    /**
+     * Cancel a deliver in progress.
+     * 
+     * @param sourceStream
+     * @param targetStream
+     * @param targetView
+     * @throws IOException
+     * @throws InterruptedException
+     * @throws ClearToolError
+     */
+    void
+    deliverCancel(Stream sourceStream, Stream targetStream, View targetView)
+    throws IOException, InterruptedException, ClearToolError;
 }
 

@@ -4,120 +4,101 @@ import hudson.Extension;
 import hudson.FilePath;
 import hudson.Launcher;
 import hudson.model.BuildListener;
-import hudson.model.TaskListener;
 import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
-import hudson.model.listeners.RunListener;
-import hudson.plugins.clearcase.objects.Baseline;
+import hudson.model.Descriptor;
+import hudson.model.FreeStyleProject;
+import hudson.plugins.clearcase.checkout.CheckoutAction;
+import hudson.plugins.clearcase.cleartool.ClearTool;
+import hudson.plugins.clearcase.deliver.BaselineDeliverWrapper;
+import hudson.plugins.clearcase.history.HistoryAction;
+import hudson.plugins.clearcase.log.ClearCaseLogger;
 import hudson.plugins.clearcase.objects.Baseline.PromotionLevel;
+import hudson.plugins.clearcase.objects.View;
+import hudson.plugins.clearcase.util.ClearToolError;
 import hudson.scm.ChangeLogParser;
-import hudson.scm.PollingResult;
 import hudson.scm.SCMDescriptor;
-import hudson.scm.SCMRevisionState;
-import hudson.scm.SCM;
+import hudson.tasks.BuildWrapper;
+import hudson.tasks.Publisher;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map.Entry;
 
-import org.kohsuke.stapler.DataBoundConstructor;
-
-public class ClearCaseUcmTooledUpSCM extends SCM {
-
-    private String streamName;
-    private String componentName;
-    private Baseline.PromotionLevel promotionLevelThreshold;
-    private String clearcaseConfig;
-    private boolean createBaseline;
-    private String baselinePattern;
+public class ClearCaseUcmTooledUpSCM extends ClearCaseUcmSCM {
 
     @Extension
     public static final ClearCaseUcmTooledUpSCMDescriptor DESCRIPTOR = new ClearCaseUcmTooledUpSCMDescriptor();
+    @Override
+    public SCMDescriptor<?> getDescriptor() {
+        return ClearCaseUcmTooledUpSCM.DESCRIPTOR;
+    }
+    
+    // ##########################
+    // FIELDS
+    // ##########################
 
-    @DataBoundConstructor
-    public ClearCaseUcmTooledUpSCM(String streamName, String componentName,
-            PromotionLevel promotionLevelThreshold, String clearcaseConfig)
+    private final String componentName;
+    private final PromotionLevel baselineLevelThreshold;
+
+    // ##########################
+    // CONSTRUCTOR
+    // ##########################
+
+    public ClearCaseUcmTooledUpSCM(String viewName, boolean useUpdate, String loadRules,
+            String clearcaseConfig, String customWorkspace, String streamName,
+            String componentName, PromotionLevel baselineLevelThreshold)
     {
-        super();
-        this.streamName = streamName;
+        super(viewName, "", false, useUpdate, "", loadRules, false, null, 0, clearcaseConfig,
+                false, customWorkspace, streamName);
         this.componentName = componentName;
-        this.promotionLevelThreshold = promotionLevelThreshold;
-        this.clearcaseConfig = clearcaseConfig;
+        this.baselineLevelThreshold = baselineLevelThreshold;
     }
 
-    @Override
-    public SCMDescriptor<ClearCaseUcmTooledUpSCM> getDescriptor() {
-        return DESCRIPTOR;
+    // ##########################
+    // GETTERS
+    // ##########################
+
+    public String getComponentName() {
+        return componentName;
     }
 
-    @SuppressWarnings("rawtypes")
-    @Override
-    public SCMRevisionState calcRevisionsFromBuild(AbstractBuild build, Launcher launcher,
-            TaskListener listener) throws IOException, InterruptedException
-    {
-        // TODO Auto-generated method stub
-        return null;
+    public PromotionLevel getBaselineLevelThreshold() {
+        return baselineLevelThreshold;
     }
 
-    /**
-     * 1. fetch existing baselines from child streams 2. if one baseline is
-     * below the specified promotionLevelThreshold, trigger build
-     */
-    @SuppressWarnings("rawtypes")
-    @Override
-    protected PollingResult compareRemoteRevisionWith(AbstractProject project, Launcher launcher,
-            FilePath workspace, TaskListener listener, SCMRevisionState baseline)
-            throws IOException, InterruptedException
-    {
-        return null;
-    }
+    // ##########################
+    // MAIN PROCESS
+    // ##########################
 
-    /**
-     * 
-     * <ol>
-     * <li>create view</li>
-     * <li>fetch existing baselines from child streams</li>
-     * 
-     * <li>if one baseline is below the specified promotionLevelThreshold
-     * <ul>
-     * <li>try to deliver baseline into integration stream</li>
-     * <li>if deliver failed, cancel it & fail build</li>
-     * </ul>
-     * </li>
-     * 
-     * <li>launch build</li>
-     * </ol>
-     * 
-     */
-    @SuppressWarnings("rawtypes")
     @Override
-    public boolean checkout(AbstractBuild build, Launcher launcher, FilePath workspace,
+    public boolean checkout(AbstractBuild build, Launcher l, FilePath workspace,
             BuildListener listener, File changelogFile) throws IOException, InterruptedException
     {
-        return false;
-    }
+        
+        
+        /* 
+         * */
+        
+        if (build.getProject() instanceof FreeStyleProject) {
+            FreeStyleProject project = (FreeStyleProject) build.getProject();
+            boolean deliverWrapperRegistered = false;
 
-    @Override
-    public ChangeLogParser createChangeLogParser() {
-        // TODO Auto-generated method stub
-        return null;
-    }
+            Iterator<BuildWrapper> iterator = project.getBuildWrappersList().iterator();
+            while (iterator.hasNext()) {
+                if (iterator.next() instanceof BaselineDeliverWrapper) {
+                    deliverWrapperRegistered = true;
+                }
+            }
 
-    @SuppressWarnings("rawtypes")
-    @Extension
-    public static class UcmTooledUpBuildListener extends RunListener<AbstractBuild> {
-
-        public UcmTooledUpBuildListener() {
-            super();
+            if (!deliverWrapperRegistered) {
+                project.getBuildWrappersList().add(new BaselineDeliverWrapper());
+            }
         }
 
-        public UcmTooledUpBuildListener(Class<AbstractBuild> targetType) {
-            super(targetType);
-        }
-
-        @Override
-        public void onCompleted(AbstractBuild r, TaskListener listener) {
-            super.onCompleted(r, listener);
-        }
+        return super.checkout(build, l, workspace, listener, changelogFile);
     }
 
 }

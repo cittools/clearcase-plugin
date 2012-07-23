@@ -1035,7 +1035,7 @@ public abstract class ClearTool implements CTFunctions {
                  * ignore the error :-)
                  * 
                  * In order to solve this problem, you can launch this command:
-                 * $ cleartool rmview –force -avobs –uuid <view-uuid>
+                 * $ cleartool rmview ï¿½force -avobs ï¿½uuid <view-uuid>
                  */
                 result = e.getResult();
             } else {
@@ -1167,6 +1167,32 @@ public abstract class ClearTool implements CTFunctions {
         } else {
             return ".view.dat";
         }
+    }
+
+    
+    @Override
+    public boolean deliver(Stream sourceStream, Stream targetStream, View targetView,
+            Baseline baseline, boolean cancelIfNonTrivial) throws IOException,
+            InterruptedException, ClearToolError
+    {
+        // TODO Auto-generated method stub
+        return false;
+    }
+
+    @Override
+    public void deliverComplete(Stream sourceStream, Stream targetStream, View targetView,
+            Baseline baseline) throws IOException, InterruptedException, ClearToolError
+    {
+        // TODO Auto-generated method stub
+
+    }
+
+    @Override
+    public void deliverCancel(Stream sourceStream, Stream targetStream, View targetView)
+            throws IOException, InterruptedException, ClearToolError
+    {
+        // TODO Auto-generated method stub
+
     }
 
     /*******************************

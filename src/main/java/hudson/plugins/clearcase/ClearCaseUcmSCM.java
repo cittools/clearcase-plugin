@@ -43,6 +43,7 @@ import hudson.plugins.clearcase.objects.View;
 import hudson.plugins.clearcase.util.CCParametersAction;
 import hudson.plugins.clearcase.util.ClearToolError;
 import hudson.scm.ChangeLogParser;
+import hudson.scm.SCMDescriptor;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -94,15 +95,17 @@ public class ClearCaseUcmSCM extends AbstractClearCaseSCM {
 
     /** overrides {@link hudson.scm.SCM#getDescriptor()} */
     @Override
-    public ClearCaseUcmSCMDescriptor getDescriptor() {
+    public SCMDescriptor<?> getDescriptor() {
         return ClearCaseUcmSCM.UCM_DESCRIPTOR;
     }
+    
 
     /** implementation of abstract method {@link hudson.scm.SCM#createChangeLogParser()} */
     @Override
     public ChangeLogParser createChangeLogParser() {
         return new UcmChangeLogParser();
     }
+
 
     /** overrides {@link AbstractClearCaseSCM#publishEnvVars()} */
     @Override
