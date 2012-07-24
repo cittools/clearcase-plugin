@@ -19,6 +19,7 @@ public class Baseline {
     private String pvob;
     private Component component;
     private PromotionLevel promotionLevel = PromotionLevel.NONE;
+    private Stream stream;
 
     private boolean created = false;
     
@@ -116,5 +117,13 @@ public class Baseline {
 
     public void setPromotionLevel(PromotionLevel promotionLevel) {
         this.promotionLevel = promotionLevel;
+    }
+
+    public Stream getStream() {
+        return stream;
+    }
+
+    public void setStream(Stream stream) {
+        this.stream = stream;
     }
 }

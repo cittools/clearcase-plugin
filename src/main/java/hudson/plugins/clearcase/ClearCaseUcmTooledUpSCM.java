@@ -5,27 +5,15 @@ import hudson.FilePath;
 import hudson.Launcher;
 import hudson.model.BuildListener;
 import hudson.model.AbstractBuild;
-import hudson.model.AbstractProject;
-import hudson.model.Descriptor;
 import hudson.model.FreeStyleProject;
-import hudson.plugins.clearcase.checkout.CheckoutAction;
-import hudson.plugins.clearcase.cleartool.ClearTool;
 import hudson.plugins.clearcase.deliver.BaselineDeliverWrapper;
-import hudson.plugins.clearcase.history.HistoryAction;
-import hudson.plugins.clearcase.log.ClearCaseLogger;
 import hudson.plugins.clearcase.objects.Baseline.PromotionLevel;
-import hudson.plugins.clearcase.objects.View;
-import hudson.plugins.clearcase.util.ClearToolError;
-import hudson.scm.ChangeLogParser;
 import hudson.scm.SCMDescriptor;
 import hudson.tasks.BuildWrapper;
-import hudson.tasks.Publisher;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.Iterator;
-import java.util.List;
-import java.util.Map.Entry;
 
 public class ClearCaseUcmTooledUpSCM extends ClearCaseUcmSCM {
 
@@ -36,12 +24,20 @@ public class ClearCaseUcmTooledUpSCM extends ClearCaseUcmSCM {
         return ClearCaseUcmTooledUpSCM.DESCRIPTOR;
     }
     
+    public static final String CLEARCASE_BUILT_BASELINE_ENVSTR = "CLEARCASE_DELIVERED_BASELINE";
+    
     // ##########################
     // FIELDS
     // ##########################
 
     private final String componentName;
     private final PromotionLevel baselineLevelThreshold;
+    
+    // ##########################
+    // TRANSIENT
+    // ##########################
+
+    
 
     // ##########################
     // CONSTRUCTOR

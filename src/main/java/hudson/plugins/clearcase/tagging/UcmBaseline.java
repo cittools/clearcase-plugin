@@ -250,7 +250,7 @@ public class UcmBaseline extends Notifier {
                 ClearTool ct = scm.createClearTool(ccConfig.getCleartoolExe(),
                 		workspace, build.getBuiltOn().getRootPath(), env, ctLogFile, null);
                 
-                View view = getBuildView(build);
+                View view = ClearCaseUcmSCM.getBuildView(build);
                 
                 Stream stream = view.getStream();
                 
@@ -363,43 +363,6 @@ public class UcmBaseline extends Notifier {
     ///////////////////////////////////////////////////////////////////////////////////////////
     /// PRIVATE METHODS /////////////////////////////////////////////////////////////////////// 
     ///////////////////////////////////////////////////////////////////////////////////////////
-    
-    private View getBuildView(AbstractBuild<?, ?> build) throws ClearToolError {
-        View view = null;
-        StringParameterValue nameParam = CCParametersAction.getBuildParameter(build,
-                CLEARCASE_VIEWNAME_ENVSTR);
-        if (nameParam == null) {
-            throw new ClearToolError("Could not find clearcase view name into build parameters.");
-        } else {
-            view = new View(nameParam.value);
-        }
-
-        StringParameterValue pathParam = CCParametersAction.getBuildParameter(build,
-                CLEARCASE_VIEWPATH_ENVSTR);
-        if (pathParam == null) {
-            throw new ClearToolError("Could not find clearcase view path into build parameters.");
-        } else {
-            view.setViewPath(pathParam.value);
-        }
-
-        StringParameterValue streamParam = CCParametersAction.getBuildParameter(build,
-                CLEARCASE_STREAM_ENVSTR);
-        if (streamParam == null) {
-            throw new ClearToolError("Could not find clearcase stream into build parameters.");
-        } else {
-            view.setStream(new Stream(streamParam.value));
-        }
-
-        StringParameterValue typeParam = CCParametersAction.getBuildParameter(build,
-                CLEARCASE_VIEWTYPE_ENVSTR);
-        if (typeParam == null) {
-            throw new ClearToolError("Could not find clearcase view type into build parameters.");
-        } else {
-            view.setDynamic(DYNAMIC_VIEW.equals(typeParam.value));
-        }
-        return view;
-    }
-
     
     private List<Component> resolveComponents(Stream stream, ClearTool ct)
             throws IOException, InterruptedException, ClearToolError

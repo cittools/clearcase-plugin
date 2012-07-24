@@ -569,6 +569,19 @@ public interface CTFunctions {
     
     
     /**
+     * Get baseline details from its label + pvob tag.
+     * 
+     * @param baselineName
+     * @return
+     * @throws IOException
+     * @throws InterruptedException
+     * @throws ClearToolError
+     */
+    Baseline
+    baselineDetails(String baselineName)
+    throws IOException, InterruptedException, ClearToolError;
+    
+    /**
      * Deliver the specified baseline from the source Stream into the target Stream.
      * If cancelIfNonTrivial is true and the deliver cannot be done without user intervention,
      * cancel it.
@@ -577,14 +590,12 @@ public interface CTFunctions {
      * @param targetStream
      * @param targetView
      * @param baseline
-     * @return
      * @throws IOException
      * @throws InterruptedException
      * @throws ClearToolError
      */
-    boolean
-    deliver(Stream sourceStream, Stream targetStream, View targetView, Baseline baseline, 
-            boolean cancelIfNonTrivial)
+    void
+    deliver(Baseline baseline, View targetView, boolean cancelIfNonTrivial)
     throws IOException, InterruptedException, ClearToolError;
     
     /**
@@ -599,7 +610,7 @@ public interface CTFunctions {
      * @throws ClearToolError
      */
     void
-    deliverComplete(Stream sourceStream, Stream targetStream, View targetView, Baseline baseline)
+    deliverComplete(Stream sourceStream, View targetView)
     throws IOException, InterruptedException, ClearToolError;
     
     /**
@@ -613,7 +624,7 @@ public interface CTFunctions {
      * @throws ClearToolError
      */
     void
-    deliverCancel(Stream sourceStream, Stream targetStream, View targetView)
+    deliverCancel(Stream sourceStream, View targetView)
     throws IOException, InterruptedException, ClearToolError;
 }
 

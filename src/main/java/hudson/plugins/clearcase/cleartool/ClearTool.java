@@ -38,6 +38,7 @@ import hudson.plugins.clearcase.objects.Stream.LockState;
 import hudson.plugins.clearcase.objects.UcmActivity;
 import hudson.plugins.clearcase.objects.View;
 import hudson.plugins.clearcase.util.ClearToolError;
+import hudson.plugins.clearcase.util.DeliverError;
 import hudson.plugins.clearcase.util.Tools;
 import hudson.util.ArgumentListBuilder;
 
@@ -61,11 +62,10 @@ public abstract class ClearTool implements CTFunctions {
      **** FIELDS *******************
      *******************************/
     private static final Pattern VIEW_INFO_PATTERN = Pattern
-            .compile("Global path: ([^\\r\\n]+).*"
-                   + "View server access path: ([^\\r\\n]+).*" 
-                   + "View uuid: ([^\\r\\n]+)", Pattern.DOTALL);
-    private static final Pattern VIEW_ATTRIBUTES_PATTERN = Pattern
-            .compile("View attributes: ([^\\r\\n]+)", Pattern.DOTALL);
+            .compile("Global path: ([^\\r\\n]+).*" + "View server access path: ([^\\r\\n]+).*"
+                    + "View uuid: ([^\\r\\n]+)", Pattern.DOTALL);
+    private static final Pattern VIEW_ATTRIBUTES_PATTERN = Pattern.compile(
+            "View attributes: ([^\\r\\n]+)", Pattern.DOTALL);
     private static final Pattern CREATED_BASELINE_PATTERN = Pattern
             .compile("Created baseline \"([^\"]+)\" in component \"([^\"]+)\"");
 
@@ -107,7 +107,7 @@ public abstract class ClearTool implements CTFunctions {
     {
         ArgumentListBuilder args = new ArgumentListBuilder();
         FilePath execPath = null;
-        
+
         args.add("mkview");
         if (!view.isDynamic()) {
             args.add("-snapshot");
@@ -139,13 +139,12 @@ public abstract class ClearTool implements CTFunctions {
             args.add(view.getName());
             execPath = getWorkspace();
         }
-        
+
         launcher.run(args, execPath);
     }
 
     /**
-     * implements
-     * {@link CTFunctions#makeBaselines(View, List, boolean, boolean)}
+     * implements {@link CTFunctions#makeBaselines(View, List, boolean, boolean)}
      **/
     @Override
     public List<Baseline> makeBaselines(View view, List<Component> components, boolean identical,
@@ -320,10 +319,9 @@ public abstract class ClearTool implements CTFunctions {
         ArgumentListBuilder args = new ArgumentListBuilder();
         args.add("lsbl");
         /*
-         * the format goes as follows :
-         * ",{creation date};baseline:{baseline name}" the comma is for
-         * separating baselines from eachother the semicolumn is for separating
-         * the creation date from the baseline name
+         * the format goes as follows : ",{creation date};baseline:{baseline name}" the comma is for
+         * separating baselines from eachother the semicolumn is for separating the creation date
+         * from the baseline name
          */
         args.add("-fmt", ",%Nd;%Xn");
         args.add("-comp", comp.toString());
@@ -367,17 +365,18 @@ public abstract class ClearTool implements CTFunctions {
         launcher.run(args, null);
     }
 
-    
     public void rmview(View view) throws IOException, InterruptedException, ClearToolError {
         rmview(view, false);
     }
-    
+
     /** implements {@link CTFunctions#rmview(View)} **/
     @Override
-    public void rmview(View view, boolean useTag) throws IOException, InterruptedException, ClearToolError {
+    public void rmview(View view, boolean useTag) throws IOException, InterruptedException,
+            ClearToolError
+    {
         ArgumentListBuilder args = new ArgumentListBuilder();
         FilePath execPath = null;
-        
+
         args.add("rmview");
         args.add("-force");
         if (useTag || view.isDynamic()) {
@@ -388,8 +387,7 @@ public abstract class ClearTool implements CTFunctions {
         }
         launcher.run(args, execPath);
     }
-    
-    
+
     /** implements {@link CTFunctions#rmtag(View)} **/
     @Override
     public void rmtag(View view) throws IOException, InterruptedException, ClearToolError {
@@ -398,7 +396,7 @@ public abstract class ClearTool implements CTFunctions {
         args.add("-view", view.getName());
         launcher.run(args, null);
     }
-    
+
     /** implements {@link CTFunctions#unregister(View)} **/
     @Override
     public void unregister(View view) throws IOException, InterruptedException, ClearToolError {
@@ -596,7 +594,7 @@ public abstract class ClearTool implements CTFunctions {
         }
         args.add("-nco");
         /* 20111216: replaced '-all' by '-r', '-all' makes lshistory ignore the lookupPaths */
-        args.add("-r"); 
+        args.add("-r");
         for (String path : lookupPaths) {
             args.add(path);
         }
@@ -609,17 +607,15 @@ public abstract class ClearTool implements CTFunctions {
             /* else, we use a child directory in the workspace/viewRoot */
             viewPath = getViewRootPath().child(view.getName());
         }
-        
+
         String result;
         try {
             result = launcher.run(args, viewPath);
         } catch (ClearToolError e) {
             if (e.getResult().contains("cleartool: Error: Branch type not found:")
-                    && e.getCode() == 0)
-            {
+                    && e.getCode() == 0) {
                 /*
-                 * this can happen if we ask for a read only path in the view.
-                 * we ignore this error
+                 * this can happen if we ask for a read only path in the view. we ignore this error
                  */
                 result = e.getResult();
             } else {
@@ -646,8 +642,7 @@ public abstract class ClearTool implements CTFunctions {
 
             if (line.startsWith("cleartool: Error: Branch type not found:")) {
                 /*
-                 * this can happen if we ask for a read only path in the view.
-                 * we ignore this error
+                 * this can happen if we ask for a read only path in the view. we ignore this error
                  */
                 line = reader.readLine();
                 continue;
@@ -690,8 +685,7 @@ public abstract class ClearTool implements CTFunctions {
     }
 
     /**
-     * implements
-     * {@link CTFunctions#lsactivity(String, HistoryFormatHandler, View)}
+     * implements {@link CTFunctions#lsactivity(String, HistoryFormatHandler, View)}
      **/
     @Override
     public UcmActivity lsactivity(String activityName, HistoryFormatHandler formatHandler, View view)
@@ -710,7 +704,7 @@ public abstract class ClearTool implements CTFunctions {
             /* else, we use a child directory in the workspace/viewRoot */
             viewPath = getViewRootPath().child(view.getName());
         }
-        
+
         String result;
 
         try {
@@ -764,7 +758,7 @@ public abstract class ClearTool implements CTFunctions {
             /* else, we use a child directory in the workspace/viewRoot */
             viewPath = getViewRootPath().child(view.getName());
         }
-        
+
         launcher.run(args, viewPath);
 
         configSpecFile.delete();
@@ -819,8 +813,7 @@ public abstract class ClearTool implements CTFunctions {
     }
 
     /**
-     * implements
-     * {@link CTFunctions#changeBaselinePromotionLevel(Baseline, String)}
+     * implements {@link CTFunctions#changeBaselinePromotionLevel(Baseline, String)}
      **/
     @Override
     public void changeBaselinePromotionLevel(Baseline baseline, PromotionLevel level)
@@ -888,22 +881,22 @@ public abstract class ClearTool implements CTFunctions {
     public void fetchPromotionLevels(String vobTag) throws IOException, InterruptedException {
         // vob dependant REJECTED Promotion level
         try {
-            this.promotionLevelNames.put(PromotionLevel.REJECTED, getAttributeFromVob(
-                    REJECTED_PLEVEL_ATTR, vobTag));
+            this.promotionLevelNames.put(PromotionLevel.REJECTED,
+                    getAttributeFromVob(REJECTED_PLEVEL_ATTR, vobTag));
         } catch (ClearToolError err) {
             this.promotionLevelNames.put(PromotionLevel.REJECTED, PromotionLevel.DEFAULT_REJECTED);
         }
         // vob dependant BUILT Promotion level
         try {
-            this.promotionLevelNames.put(PromotionLevel.BUILT, getAttributeFromVob(
-                    BUILT_PLEVEL_ATTR, vobTag));
+            this.promotionLevelNames.put(PromotionLevel.BUILT,
+                    getAttributeFromVob(BUILT_PLEVEL_ATTR, vobTag));
         } catch (ClearToolError err) {
             this.promotionLevelNames.put(PromotionLevel.BUILT, PromotionLevel.DEFAULT_BUILT);
         }
         // vob dependant RELEASED Promotion level
         try {
-            this.promotionLevelNames.put(PromotionLevel.RELEASED, getAttributeFromVob(
-                    RELEASED_PLEVEL_ATTR, vobTag));
+            this.promotionLevelNames.put(PromotionLevel.RELEASED,
+                    getAttributeFromVob(RELEASED_PLEVEL_ATTR, vobTag));
         } catch (ClearToolError err) {
             this.promotionLevelNames.put(PromotionLevel.RELEASED, PromotionLevel.DEFAULT_RELEASED);
         }
@@ -1029,13 +1022,12 @@ public abstract class ClearTool implements CTFunctions {
         } catch (ClearToolError e) {
             if (e.getResult().contains("No tag in region for view")) {
                 /*
-                 * This should not be an error from cleartool but only a warning
-                 * This happens when a view tag has been deleted but that the
-                 * view is still registered and attached to the stream so we
-                 * ignore the error :-)
+                 * This should not be an error from cleartool but only a warning This happens when a
+                 * view tag has been deleted but that the view is still registered and attached to
+                 * the stream so we ignore the error :-)
                  * 
-                 * In order to solve this problem, you can launch this command:
-                 * $ cleartool rmview �force -avobs �uuid <view-uuid>
+                 * In order to solve this problem, you can launch this command: $ cleartool rmview
+                 * �force -avobs �uuid <view-uuid>
                  */
                 result = e.getResult();
             } else {
@@ -1048,8 +1040,8 @@ public abstract class ClearTool implements CTFunctions {
             for (String line : result.split("\n")) {
                 if (!line.contains("cleartool: Error:")) {
                     /*
-                     * skipping the error lines that we may have got in the
-                     * errors we escaped just before
+                     * skipping the error lines that we may have got in the errors we escaped just
+                     * before
                      */
                     String[] viewTags = line.trim().split(" ");
                     for (String viewTag : viewTags) {
@@ -1122,14 +1114,14 @@ public abstract class ClearTool implements CTFunctions {
 
     /** implements {@link CTFunctions#hasCheckouts(String, View)} **/
     @Override
-    public boolean hasCheckouts(String branchname, View view, List<String> viewPaths) 
+    public boolean hasCheckouts(String branchname, View view, List<String> viewPaths)
             throws IOException, InterruptedException, ClearToolError
     {
         ArgumentListBuilder args = new ArgumentListBuilder();
         args.add("lscheckout");
         args.add("-s");
         args.add("-brtype", branchname);
-        
+
         if (view.isDynamic()) {
             args.add("-avobs");
         } else if (viewPaths != null && viewPaths.size() > 0) {
@@ -1138,7 +1130,8 @@ public abstract class ClearTool implements CTFunctions {
                 args.add(pname);
             }
         } else {
-            throw new ClearToolError("Cannot search for checkouts in a snapshot view without load rules.");
+            throw new ClearToolError(
+                    "Cannot search for checkouts in a snapshot view without load rules.");
         }
 
         FilePath viewPath;
@@ -1149,7 +1142,7 @@ public abstract class ClearTool implements CTFunctions {
             /* else, we use a child directory in the workspace/viewRoot */
             viewPath = getViewRootPath().child(view.getName());
         }
-        
+
         String result = launcher.run(args, viewPath);
 
         return result.trim().length() > 0;
@@ -1169,30 +1162,126 @@ public abstract class ClearTool implements CTFunctions {
         }
     }
 
-    
     @Override
-    public boolean deliver(Stream sourceStream, Stream targetStream, View targetView,
-            Baseline baseline, boolean cancelIfNonTrivial) throws IOException,
-            InterruptedException, ClearToolError
-    {
-        // TODO Auto-generated method stub
-        return false;
-    }
-
-    @Override
-    public void deliverComplete(Stream sourceStream, Stream targetStream, View targetView,
-            Baseline baseline) throws IOException, InterruptedException, ClearToolError
-    {
-        // TODO Auto-generated method stub
-
-    }
-
-    @Override
-    public void deliverCancel(Stream sourceStream, Stream targetStream, View targetView)
+    public void deliver(Baseline baseline, View targetView, boolean cancelIfNonTrivial)
             throws IOException, InterruptedException, ClearToolError
     {
-        // TODO Auto-generated method stub
+        ArgumentListBuilder args = new ArgumentListBuilder();
+        args.add("deliver");
+        args.add("-baseline", String.valueOf(baseline));
+        args.add("-stream", String.valueOf(baseline.getStream()));
+        args.add("-to", targetView.getName());
+        if (cancelIfNonTrivial) {
+            args.add("-abort");
+        }
+        args.add("-force");
 
+        FilePath viewPath;
+        if (targetView.getViewPath() != null) {
+            /* if viewPath is already defined, we use it */
+            viewPath = new FilePath(getViewRootPath().getChannel(), targetView.getViewPath());
+        } else {
+            /* else, we use a child directory in the workspace/viewRoot */
+            viewPath = getViewRootPath().child(targetView.getName());
+        }
+
+        try {
+            launcher.run(args, viewPath);
+        } catch (ClearToolError e) {
+            /* Determine cause */
+            if (e.getResult().contains("requires child development streams to rebase")) {
+                throw new DeliverError("The source stream '" + baseline.getStream()
+                        + "' must be rebased to recommendend baselines before deliver.");
+            } else if (e.getResult().contains("Unable to perform merge")) {
+                throw new DeliverError(
+                        "Automatic merge failed. Please resolve the conflicts manually.");
+            } else if (e.getResult().contains(
+                    "does not allow deliver operations from streams in other")) {
+                throw new DeliverError("Interproject deliver is forbidden by a ClearCase policy.");
+            } else if (e.getResult().contains("active deliver or rebase operation")) {
+                throw new DeliverError(
+                        "Deliver/Rebase operation already in progress on target stream.");
+            } else {
+                /* unhandled cause */
+                throw e;
+            }
+        }
+    }
+
+    @Override
+    public void deliverComplete(Stream sourceStream, View targetView) throws IOException,
+            InterruptedException, ClearToolError
+    {
+        ArgumentListBuilder args = new ArgumentListBuilder();
+        args.add("deliver");
+        args.add("-stream", sourceStream.toString());
+        args.add("-to", targetView.getName());
+        args.add("-complete");
+        args.add("-force");
+
+        FilePath viewPath;
+        if (targetView.getViewPath() != null) {
+            /* if viewPath is already defined, we use it */
+            viewPath = new FilePath(getViewRootPath().getChannel(), targetView.getViewPath());
+        } else {
+            /* else, we use a child directory in the workspace/viewRoot */
+            viewPath = getViewRootPath().child(targetView.getName());
+        }
+
+        launcher.run(args, viewPath);
+    }
+
+    @Override
+    public void deliverCancel(Stream sourceStream, View targetView) throws IOException,
+            InterruptedException, ClearToolError
+    {
+        ArgumentListBuilder args = new ArgumentListBuilder();
+        args.add("deliver");
+        args.add("-stream", sourceStream.toString());
+        args.add("-to", targetView.getName());
+        args.add("-cancel");
+        args.add("-force");
+
+        FilePath viewPath;
+        if (targetView.getViewPath() != null) {
+            /* if viewPath is already defined, we use it */
+            viewPath = new FilePath(getViewRootPath().getChannel(), targetView.getViewPath());
+        } else {
+            /* else, we use a child directory in the workspace/viewRoot */
+            viewPath = getViewRootPath().child(targetView.getName());
+        }
+
+        launcher.run(args, viewPath);
+    }
+
+    @Override
+    public Baseline baselineDetails(String baselineName) throws IOException, InterruptedException,
+            ClearToolError
+    {
+        ArgumentListBuilder args = new ArgumentListBuilder();
+        args.add("lsbl");
+        args.add("-fmt", "%[component]Xp, %[bl_stream]Xp, %[plevel]Xp\\n");
+        args.add(baselineName);
+
+        String result = launcher.run(args, null);
+
+        Baseline baseline = null;
+
+        if (result != null) {
+            Matcher matcher = Pattern.compile("component:(.*?), stream:(.*?), (\\w*?)").matcher(
+                    result);
+            if (matcher.find()) {
+                Component component = new Component(matcher.group(1));
+                Stream stream = new Stream(matcher.group(2));
+                PromotionLevel plevel = PromotionLevel.valueOf(matcher.group(3));
+                baseline = new Baseline(baselineName);
+                baseline.setComponent(component);
+                baseline.setStream(stream);
+                baseline.setPromotionLevel(plevel);
+            }
+        }
+
+        return baseline;
     }
 
     /*******************************

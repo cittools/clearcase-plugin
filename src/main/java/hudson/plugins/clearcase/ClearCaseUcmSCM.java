@@ -24,6 +24,11 @@
  */
 package hudson.plugins.clearcase;
 
+import static hudson.plugins.clearcase.AbstractClearCaseSCM.CLEARCASE_VIEWNAME_ENVSTR;
+import static hudson.plugins.clearcase.AbstractClearCaseSCM.CLEARCASE_VIEWPATH_ENVSTR;
+import static hudson.plugins.clearcase.AbstractClearCaseSCM.CLEARCASE_VIEWTYPE_ENVSTR;
+import static hudson.plugins.clearcase.AbstractClearCaseSCM.DYNAMIC_VIEW;
+import static hudson.plugins.clearcase.ClearCaseUcmSCM.CLEARCASE_STREAM_ENVSTR;
 import hudson.EnvVars;
 import hudson.Extension;
 import hudson.FilePath;
@@ -211,6 +216,42 @@ public class ClearCaseUcmSCM extends AbstractClearCaseSCM {
         }
     }
 
+    public static View getBuildView(AbstractBuild<?, ?> build) throws ClearToolError {
+        View view = null;
+        StringParameterValue nameParam = CCParametersAction.getBuildParameter(build,
+                CLEARCASE_VIEWNAME_ENVSTR);
+        if (nameParam == null) {
+            throw new ClearToolError("Could not find clearcase view name into build parameters.");
+        } else {
+            view = new View(nameParam.value);
+        }
+
+        StringParameterValue pathParam = CCParametersAction.getBuildParameter(build,
+                CLEARCASE_VIEWPATH_ENVSTR);
+        if (pathParam == null) {
+            throw new ClearToolError("Could not find clearcase view path into build parameters.");
+        } else {
+            view.setViewPath(pathParam.value);
+        }
+
+        StringParameterValue streamParam = CCParametersAction.getBuildParameter(build,
+                CLEARCASE_STREAM_ENVSTR);
+        if (streamParam == null) {
+            throw new ClearToolError("Could not find clearcase stream into build parameters.");
+        } else {
+            view.setStream(new Stream(streamParam.value));
+        }
+
+        StringParameterValue typeParam = CCParametersAction.getBuildParameter(build,
+                CLEARCASE_VIEWTYPE_ENVSTR);
+        if (typeParam == null) {
+            throw new ClearToolError("Could not find clearcase view type into build parameters.");
+        } else {
+            view.setDynamic(DYNAMIC_VIEW.equals(typeParam.value));
+        }
+        return view;
+    }
+    
     /*******************************
      **** GETTERS ******************
      *******************************/

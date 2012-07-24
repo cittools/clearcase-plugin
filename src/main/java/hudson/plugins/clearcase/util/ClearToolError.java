@@ -90,6 +90,7 @@ public class ClearToolError extends Exception {
         }
     }
     
+  
     ////////////////////////////////////////////////////////////////////////////////////
     
     @Override
@@ -106,6 +107,5 @@ public class ClearToolError extends Exception {
         }
         return sb.toString();
     }
-
-
+    
 }
