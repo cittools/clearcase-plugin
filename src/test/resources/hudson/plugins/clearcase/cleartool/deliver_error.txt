@@ -1,0 +1,28 @@
+Changes to be DELIVERED to default target stream in project "P_ClearCasePlugin":
+          FROM: stream "s0030382_P_ClearCasePlugin"
+          TO: stream "P_ClearCasePlugin_int"
+Using target view: "s0030382_P_ClearCasePlugin_int".
+
+Baselines to be delivered:
+        baseline:test_autodeliver2@\Test_pvob   component:ClearCasePlugin@\Test_pvob
+Checked out "M:\s0030382_P_ClearCasePlugin_int\Test_comp\ClearCasePlugin\cuir.txt" from version "\main\P_ClearCasePlugin_int\1".
+  Attached activity:
+    activity:deliver.s0030382_P_ClearCasePlugin.20120724.154200@\Test_pvob  "deliver s0030382_P_ClearCasePlugin on 24/07/2012 15:42:00."
+Needs Merge "M:\s0030382_P_ClearCasePlugin_int\Test_comp\ClearCasePlugin\cuir.txt" [to \main\P_ClearCasePlugin_int\CHECKEDOUT from \main\s0030382_P_ClearCasePlugin\2 base \main\0]
+********************************
+<<< file 1: M:\s0030382_P_ClearCasePlugin_int\Test_comp\ClearCasePlugin\cuir.txt@@\main\0
+>>> file 2: M:\s0030382_P_ClearCasePlugin_int\Test_comp\ClearCasePlugin\cuir.txt@@\main\s0030382_P_ClearCasePlugin\2
+>>> file 3: M:\s0030382_P_ClearCasePlugin_int\Test_comp\ClearCasePlugin\cuir.txt
+********************************
+-----------[after 0 file 1]------------|----------[inserted 1 file 2]----------
+                                      -| sdkljlkqsjdklqsj
+                                       |-
+-----------[after 0 file 1]------------|----------[inserted 1 file 3]----------
+                                      -| dsfkljdfkj
+                                       |-
+*** No Automatic Decision Possible
+merge: Warning: *** Aborting...
+cleartool: Error: An error occurred while merging file elements in the target view.
+cleartool: Error: Unable to perform merge.
+cleartool: Error: Unable to do integration.
+cleartool: Error: Unable to deliver stream "s0030382_P_ClearCasePlugin".

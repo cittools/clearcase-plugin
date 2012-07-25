@@ -1,0 +1,7 @@
+Cancel deliver
+          FROM: stream "s0030382_P_ClearCasePlugin"
+          TO: stream "P_ClearCasePlugin_int"
+Using target view: "s0030382_P_ClearCasePlugin_int".
+
+Baselines to be delivered:
+Deliver of stream "s0030382_P_ClearCasePlugin" canceled.

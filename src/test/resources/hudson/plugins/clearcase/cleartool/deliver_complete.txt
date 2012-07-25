@@ -1,0 +1,13 @@
+Resume deliver
+          FROM: stream "s0030382_P_ClearCasePlugin"
+          TO: stream "P_ClearCasePlugin_int"
+Using target view: "s0030382_P_ClearCasePlugin_int".
+
+Baselines to be delivered:
+        baseline:test_autodeliver@\Test_pvob    component:ClearCasePlugin@\Test_pvob
+Do you wish to continue with this deliver operation?  [no] yes
+Are you sure you want to complete this deliver operation?  [no] yes
+Deliver has completed
+          FROM: stream "s0030382_P_ClearCasePlugin"
+          TO: stream "P_ClearCasePlugin_int"
+Using target view: "s0030382_P_ClearCasePlugin_int".

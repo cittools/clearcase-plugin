@@ -1,0 +1,38 @@
+Changes to be DELIVERED to default target stream in project "P_ClearCasePlugin":
+          FROM: stream "s0030382_P_ClearCasePlugin"
+          TO: stream "P_ClearCasePlugin_int"
+Using target view: "s0030382_P_ClearCasePlugin_int".
+
+Baselines to be delivered:
+        baseline:test_autodeliver@\Test_pvob    component:ClearCasePlugin@\Test_pvob
+Checked out "M:\s0030382_P_ClearCasePlugin_int\Test_comp\ClearCasePlugin" from version "\main\P_ClearCasePlugin_int\1".
+  Attached activity:
+    activity:deliver.s0030382_P_ClearCasePlugin.20120724.153146@\Test_pvob  "deliver s0030382_P_ClearCasePlugin on 24/07/2012 15:31:46."
+Needs Merge "M:\s0030382_P_ClearCasePlugin_int\Test_comp\ClearCasePlugin" [(automatic) to \main\P_ClearCasePlugin_int\CHECKEDOUT from \main\s0030382_P_ClearCasePlugin\2
+(base also \main\s0030382_P_ClearCasePlugin\1)]
+********************************
+<<< directory 1: M:\s0030382_P_ClearCasePlugin_int\Test_comp\ClearCasePlugin@@\main\s0030382_P_ClearCasePlugin\1
+>>> directory 2: M:\s0030382_P_ClearCasePlugin_int\Test_comp\ClearCasePlugin@@\main\s0030382_P_ClearCasePlugin\2
+>>> directory 3: M:\s0030382_P_ClearCasePlugin_int\Test_comp\ClearCasePlugin
+********************************
+-----------[ directory 1 ]-------------|---------[ added directory 2 ]---------
+                                      -| cuir.txt  --07-24T15:10 s0030382
+*** Automatic: Applying ADDITION from directory 2
+Recorded merge of "M:\s0030382_P_ClearCasePlugin_int\Test_comp\ClearCasePlugin".
+Checked out "M:\s0030382_P_ClearCasePlugin_int\Test_comp\ClearCasePlugin\test.txt" from version "\main\P_ClearCasePlugin_int\1".
+  Attached activity:
+    activity:deliver.s0030382_P_ClearCasePlugin.20120724.153146@\Test_pvob  "deliver s0030382_P_ClearCasePlugin on 24/07/2012 15:31:46."
+Needs Merge "M:\s0030382_P_ClearCasePlugin_int\Test_comp\ClearCasePlugin\test.txt" [(automatic) to \main\P_ClearCasePlugin_int\CHECKEDOUT from \main\s0030382_P_ClearCasePlugin\2 (base also \main\s0030382_P_ClearCasePlugin\1)]
+Trivial merge: "M:\s0030382_P_ClearCasePlugin_int\Test_comp\ClearCasePlugin\test.txt" is same as base "M:\s0030382_P_ClearCasePlugin_int\Test_comp\ClearCasePlugin\test.txt@@\main\s0030382_P_ClearCasePlugin\1".
+Copying "M:\s0030382_P_ClearCasePlugin_int\Test_comp\ClearCasePlugin\test.txt@@\main\s0030382_P_ClearCasePlugin\2" to output file.
+Output of merge is in "M:\s0030382_P_ClearCasePlugin_int\Test_comp\ClearCasePlugin\test.txt".
+Recorded merge of "M:\s0030382_P_ClearCasePlugin_int\Test_comp\ClearCasePlugin\test.txt".
+
+
+Deliver has merged
+          FROM: stream "s0030382_P_ClearCasePlugin"
+          TO: stream "P_ClearCasePlugin_int"
+Using target view: "s0030382_P_ClearCasePlugin_int".
+Build and test are necessary in target view "s0030382_P_ClearCasePlugin_int"
+to ensure that any merges and configuration changes were completed correctly.  When build and
+test are confirmed, run "cleartool deliver -complete".
