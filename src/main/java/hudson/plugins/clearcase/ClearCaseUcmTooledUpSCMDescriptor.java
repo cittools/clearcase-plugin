@@ -19,7 +19,8 @@ public class ClearCaseUcmTooledUpSCMDescriptor extends SCMDescriptor<ClearCaseUc
         super(ClearCaseUcmTooledUpSCM.class, null);
     }
     
-    @Override
+    @SuppressWarnings("rawtypes")
+	@Override
     public boolean isApplicable(AbstractProject project) {
         return project instanceof FreeStyleProject;
     }

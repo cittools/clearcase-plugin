@@ -1186,7 +1186,8 @@ public abstract class ClearTool implements CTFunctions {
         }
 
         try {
-            launcher.run(args, viewPath);
+            String result = launcher.run(args, viewPath);
+            System.out.println(result);
         } catch (ClearToolError e) {
             /* Determine cause */
             if (e.getResult().contains("requires child development streams to rebase")) {
@@ -1283,6 +1284,57 @@ public abstract class ClearTool implements CTFunctions {
 
         return baseline;
     }
+    
+    public List<Stream> getChildStreams(Stream stream) throws IOException, InterruptedException,
+            ClearToolError
+    {
+        List<Stream> streams = new ArrayList<Stream>();
+
+        ArgumentListBuilder args = new ArgumentListBuilder();
+        args.add("describe");
+        args.add("-fmt", "%[dstreams]CXp");
+        args.add("stream:" + stream.toString());
+
+        String result = launcher.run(args, null);
+
+        if (result != null) {
+            for (String s : result.split("\\s*,\\s")) {
+                if (!s.trim().isEmpty()) {
+                    streams.add(new Stream(s.trim()));
+                }
+            }
+        }
+
+        return streams;
+    }
+
+    public List<Baseline> getBaselines(Stream stream, PromotionLevel level) throws IOException,
+            InterruptedException, ClearToolError
+    {
+        List<Baseline> baselines = new ArrayList<Baseline>();
+
+        ArgumentListBuilder args = new ArgumentListBuilder();
+        args.add("lsbl");
+        args.add("-fmt", "%Xn, %[component]Xp\\n");
+        args.add("-stream", stream.toString());
+        args.add("-level", level.toString());
+
+        String result = launcher.run(args, null);
+
+        if (result != null) {
+            Matcher matcher = Pattern.compile(
+                    "baseline:(.*?), component:(.*?)").matcher(result);
+            while(matcher.find()) {
+                Baseline baseline = new Baseline(matcher.group(1));
+                baseline.setComponent(new Component(matcher.group(2)));
+                baseline.setStream(stream);
+                baseline.setPromotionLevel(level);
+                baselines.add(baseline);
+            }
+        }
+        
+        return baselines;
+    }
 
     /*******************************
      **** GETTERS & SETTERS ********
@@ -1307,5 +1359,7 @@ public abstract class ClearTool implements CTFunctions {
     public File getLogFile() {
         return this.launcher.getLogFile();
     }
+
+   
 
 }

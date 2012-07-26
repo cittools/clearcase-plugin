@@ -18,6 +18,7 @@ import hudson.plugins.clearcase.objects.View;
 import hudson.plugins.clearcase.objects.Baseline.PromotionLevel;
 import hudson.plugins.clearcase.objects.Stream.LockState;
 import hudson.plugins.clearcase.util.ClearToolError;
+import hudson.plugins.clearcase.util.DeliverError;
 import hudson.plugins.clearcase.util.Tools;
 import hudson.util.ArgumentListBuilder;
 
@@ -985,6 +986,55 @@ public class ClearToolTest {
         assertTrue(ct.hasCheckouts(branch, view, viewPaths));
         verify(launcher).run(argThat(new IsSameArgs(args)), eq(workspace.child(view.getName())));
     }
+    
+    @Test
+    public void deliverOkTest() throws Exception {
+        when(launcher.run(any(ArgumentListBuilder.class), any(FilePath.class))).thenReturn(
+                ctResult("deliver_ok"));
+        
+        View view = new View("viewname");
+        Stream devStream = new Stream("dev_stream@\\pvob");
+        Baseline baseline = new Baseline("baseline@\\pvob");
+        baseline.setStream(devStream);
+        
+        ArgumentListBuilder args = new ArgumentListBuilder("deliver", 
+        		"-baseline", baseline.toString(),
+        		"-stream", devStream.toString(),
+        		"-to", view.getName(),
+        		"-abort", "-force");
+        
+        ct.deliver(baseline, view, true);
+        
+        verify(launcher).run(argThat(new IsSameArgs(args)), eq(workspace.child(view.getName())));
+    }
+    
+    @Test
+    public void deliverErrorTest() throws Exception {
+        when(launcher.run(any(ArgumentListBuilder.class), any(FilePath.class))).thenReturn(
+                ctResult("deliver_error"));
+        
+        View view = new View("viewname");
+        Stream devStream = new Stream("dev_stream@\\pvob");
+        Baseline baseline = new Baseline("baseline@\\pvob");
+        baseline.setStream(devStream);
+        
+        ArgumentListBuilder args = new ArgumentListBuilder("deliver", 
+        		"-baseline", baseline.toString(),
+        		"-stream", devStream.toString(),
+        		"-to", view.getName(),
+        		"-abort", "-force");
+        
+        try {
+			ct.deliver(baseline, view, true);
+			fail("Deliver should have failed.");
+		} catch (DeliverError e) {
+			/* success */
+		}
+        verify(launcher).run(argThat(new IsSameArgs(args)), eq(workspace.child(view.getName())));
+        
+    }
+    
+    
     
     /*******************************************************************************************/
     /*******************************************************************************************/

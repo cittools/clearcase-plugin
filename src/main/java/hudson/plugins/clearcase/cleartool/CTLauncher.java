@@ -127,7 +127,7 @@ public class CTLauncher {
             forkStream.close();
         }
 
-        if (cleartoolResult.contains("cleartool: Error") || code != 0) {
+        if (code != 0 || cleartoolResult.contains("cleartool: Error")) {
             throw new ClearToolError(cmd.toStringWithQuote(), cleartoolResult, code, path);
         }
 

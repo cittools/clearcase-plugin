@@ -24,12 +24,7 @@
  */
 package hudson.plugins.clearcase.tagging;
 
-import static hudson.plugins.clearcase.AbstractClearCaseSCM.CLEARCASE_VIEWNAME_ENVSTR;
-import static hudson.plugins.clearcase.AbstractClearCaseSCM.CLEARCASE_VIEWPATH_ENVSTR;
-import static hudson.plugins.clearcase.AbstractClearCaseSCM.CLEARCASE_VIEWTYPE_ENVSTR;
-import static hudson.plugins.clearcase.AbstractClearCaseSCM.DYNAMIC_VIEW;
 import static hudson.plugins.clearcase.AbstractClearCaseSCM.ORIGINAL_WORKSPACE_ENVSTR;
-import static hudson.plugins.clearcase.ClearCaseUcmSCM.CLEARCASE_STREAM_ENVSTR;
 import hudson.EnvVars;
 import hudson.Extension;
 import hudson.FilePath;

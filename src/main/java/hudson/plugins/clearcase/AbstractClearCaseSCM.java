@@ -257,30 +257,13 @@ public abstract class AbstractClearCaseSCM extends SCM {
                 }
                 logger.log("Workspace changed to " + workspace.getRemote());
             }
+            
+            
+            if (canGatherChangelog(cleartool)) {
+                
+                ClearCaseChangeLogSet<? extends ChangeLogSet.Entry> changes = gatherChangelog(
+                        build, logger, view, cleartool);
 
-            List<String> pathsForLsHistory = getLsHistoryPaths(cleartool);
-            if (!pathsForLsHistory.isEmpty()) {
-                HistoryAction historyAction = createHistoryAction(cleartool);
-
-                // Gather change log
-                ClearCaseChangeLogSet<? extends ChangeLogSet.Entry> changes = null;
-                if (build.getPreviousBuild() != null) {
-                    Run<?, ?> prevBuild = build.getPreviousBuild();
-                    Date lastBuildTime;
-                    long lastBuildMilliSecs = prevBuild.getTimestamp().getTimeInMillis();
-
-                    if (multiSitePollBuffer != 0) {
-                        lastBuildMilliSecs = lastBuildMilliSecs - (1000 * 60 * multiSitePollBuffer);
-                    }
-                    lastBuildTime = new Date(lastBuildMilliSecs);
-
-                    String sinceStr = Tools.fmtDuration(System.currentTimeMillis()
-                            - lastBuildMilliSecs);
-                    logger.log("Retrieving changes since last build (" + sinceStr + ")...");
-
-                    changes = historyAction.getChanges(build, lastBuildTime, view,
-                            getBranchNames(), getLsHistoryPaths(cleartool));
-                }
                 // Save change log
                 if ((changes == null) || changes.isEmptySet()) {
                     // no changes
@@ -312,6 +295,7 @@ public abstract class AbstractClearCaseSCM extends SCM {
 
         return true;
     }
+
 
     // /////////////////////////////////////////////////////////////////////////////////////////
     // / OVERRIDE //////////////////////////////////////////////////////////////////////////////
@@ -450,6 +434,39 @@ public abstract class AbstractClearCaseSCM extends SCM {
         return null;
     }
 
+    protected boolean canGatherChangelog(ClearTool cleartool) {
+        List<String> pathsForLsHistory = getLsHistoryPaths(cleartool);
+        return !pathsForLsHistory.isEmpty();
+    }
+
+    protected ClearCaseChangeLogSet<? extends ChangeLogSet.Entry> gatherChangelog(
+            AbstractBuild<?, ?> build, ClearCaseLogger logger, View view, ClearTool cleartool)
+            throws IOException, InterruptedException, ClearToolError
+    {
+        ClearCaseChangeLogSet<? extends ChangeLogSet.Entry> changes = null;
+
+        if (build.getPreviousBuild() != null) {
+            HistoryAction historyAction = createHistoryAction(cleartool);
+
+            Run<?, ?> prevBuild = build.getPreviousBuild();
+            Date lastBuildTime;
+            long lastBuildMilliSecs = prevBuild.getTimestamp().getTimeInMillis();
+
+            if (multiSitePollBuffer != 0) {
+                lastBuildMilliSecs = lastBuildMilliSecs - (1000 * 60 * multiSitePollBuffer);
+            }
+            lastBuildTime = new Date(lastBuildMilliSecs);
+
+            String sinceStr = Tools.fmtDuration(System.currentTimeMillis() - lastBuildMilliSecs);
+            logger.log("Retrieving changes since last build (" + sinceStr + ")...");
+
+            changes = historyAction.getChanges(build, lastBuildTime, view, getBranchNames(),
+                    getLsHistoryPaths(cleartool));
+        }
+
+        return changes;
+    }
+    
     // /////////////////////////////////////////////////////////////////////////////////////////
     // / ABSTRACT //////////////////////////////////////////////////////////////////////////////
     // /////////////////////////////////////////////////////////////////////////////////////////
@@ -483,11 +500,13 @@ public abstract class AbstractClearCaseSCM extends SCM {
     protected abstract List<String> getViewPathsForLSHistory(ClearTool ct) throws IOException,
             InterruptedException, ClearToolError;
 
+    
     // /////////////////////////////////////////////////////////////////////////////////////////
     // / MISC //////////////////////////////////////////////////////////////////////////////////
     // /////////////////////////////////////////////////////////////////////////////////////////
 
     protected abstract View createView(String viewTag);
+
 
     public ClearTool createClearTool(String executable, FilePath workspace, FilePath nodeRoot,
             EnvVars env, File logFile, Launcher launcher)
