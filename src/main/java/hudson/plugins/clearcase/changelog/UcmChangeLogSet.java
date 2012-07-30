@@ -32,7 +32,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
@@ -47,12 +47,16 @@ public class UcmChangeLogSet extends ClearCaseChangeLogSet<UcmActivity> {
 
     private List<UcmActivity> history = null;
 
+    public UcmChangeLogSet(AbstractBuild<?, ?> build) {
+        this(build, new ArrayList<UcmActivity>());
+    }
+    
     public UcmChangeLogSet(AbstractBuild<?, ?> build, List<UcmActivity> logs) {
         super(build);
         for (UcmActivity entry : logs) {
             entry.setCustomParent(this);
         }
-        this.history = Collections.unmodifiableList(logs);
+        this.history = logs;
     }
 
     @Override

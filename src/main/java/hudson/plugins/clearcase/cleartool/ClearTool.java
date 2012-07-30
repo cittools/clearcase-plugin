@@ -30,6 +30,7 @@ import hudson.EnvVars;
 import hudson.FilePath;
 import hudson.plugins.clearcase.objects.Baseline;
 import hudson.plugins.clearcase.objects.Baseline.PromotionLevel;
+import hudson.plugins.clearcase.objects.AffectedFile;
 import hudson.plugins.clearcase.objects.Component;
 import hudson.plugins.clearcase.objects.CompositeComponent;
 import hudson.plugins.clearcase.objects.HistoryEntry;
@@ -722,6 +723,71 @@ public abstract class ClearTool implements CTFunctions {
 
         return formatHandler.parseActivity(result);
     }
+    
+    public UcmActivity lsactivityFull(String activityName, View view) throws IOException,
+            InterruptedException, ClearToolError
+    {
+        ArgumentListBuilder args = new ArgumentListBuilder();
+        args.add("desc");
+        args.add("-l");
+        args.add("activity:" + activityName);
+
+        FilePath viewPath;
+        if (view.getViewPath() != null) {
+            /* if viewPath is already defined, we use it */
+            viewPath = new FilePath(getViewRootPath().getChannel(), view.getViewPath());
+        } else {
+            /* else, we use a child directory in the workspace/viewRoot */
+            viewPath = getViewRootPath().child(view.getName());
+        }
+
+        String result = launcher.run(args, viewPath);
+        
+        UcmActivity activity = null;
+        
+        if (result != null) {
+            activity = new UcmActivity();
+            
+            Matcher ownerMatcher = Pattern.compile("owner:\\s*(.*?)$").matcher(result);
+            if (ownerMatcher.find())
+                activity.setUser(ownerMatcher.group(1));
+            
+            Matcher titleMatcher = Pattern.compile("title:\\s*(.*?)$").matcher(result);
+            if (titleMatcher.find())
+                activity.setHeadline(titleMatcher.group(1));
+            
+            Matcher dateMatcher = Pattern.compile("created\\s*(.*?)\\s").matcher(result);
+            if (dateMatcher.find())
+                activity.setDateStr(dateMatcher.group(1));
+            
+            String[] split = result.split("change set versions:");
+            for (String f : split[1].trim().split("\\s*\\n+\\s*")) {
+                AffectedFile file = new AffectedFile();
+                file.setName(f.substring(view.getViewPath().length()));
+                activity.getAffectedFiles().add(file);
+            }
+        }
+
+        return activity;
+    }
+    
+    public List<String> getBaselineActivities(Baseline baseline) throws IOException,
+    InterruptedException, ClearToolError
+    {
+        ArgumentListBuilder args = new ArgumentListBuilder();
+        args.add("lsbl");
+        args.add("-fmt", "%[activities]Xp");
+        args.add(baseline.toString());
+        
+        String result = launcher.run(args, null);
+        
+        List<String> activityNames = new ArrayList<String>();
+        if (result != null) {
+            activityNames.addAll(Arrays.asList(result.split("\\s*,\\s*")));
+        }
+        return activityNames;
+    }
+    
 
     /** implements {@link CTFunctions#catcs(View)} **/
     @Override
@@ -1187,7 +1253,6 @@ public abstract class ClearTool implements CTFunctions {
 
         try {
             String result = launcher.run(args, viewPath);
-            System.out.println(result);
         } catch (ClearToolError e) {
             /* Determine cause */
             if (e.getResult().contains("requires child development streams to rebase")) {
@@ -1284,7 +1349,7 @@ public abstract class ClearTool implements CTFunctions {
 
         return baseline;
     }
-    
+
     public List<Stream> getChildStreams(Stream stream) throws IOException, InterruptedException,
             ClearToolError
     {
@@ -1308,8 +1373,8 @@ public abstract class ClearTool implements CTFunctions {
         return streams;
     }
 
-    public List<Baseline> getBaselines(Stream stream, PromotionLevel level) throws IOException,
-            InterruptedException, ClearToolError
+    public List<Baseline> getBaselines(Stream stream, PromotionLevel level,
+            boolean showDeliverBaselines) throws IOException, InterruptedException, ClearToolError
     {
         List<Baseline> baselines = new ArrayList<Baseline>();
 
@@ -1322,17 +1387,19 @@ public abstract class ClearTool implements CTFunctions {
         String result = launcher.run(args, null);
 
         if (result != null) {
-            Matcher matcher = Pattern.compile(
-                    "baseline:(.*?), component:(.*?)").matcher(result);
-            while(matcher.find()) {
-                Baseline baseline = new Baseline(matcher.group(1));
-                baseline.setComponent(new Component(matcher.group(2)));
-                baseline.setStream(stream);
-                baseline.setPromotionLevel(level);
-                baselines.add(baseline);
+            Matcher matcher = Pattern.compile("baseline:(.*?), component:(.*?)").matcher(result);
+            while (matcher.find()) {
+                String name = matcher.group(1);
+                if (showDeliverBaselines || !name.startsWith("deliverbl.")) {
+                    Baseline baseline = new Baseline(name);
+                    baseline.setComponent(new Component(matcher.group(2)));
+                    baseline.setStream(stream);
+                    baseline.setPromotionLevel(level);
+                    baselines.add(baseline);
+                }
             }
         }
-        
+
         return baselines;
     }
 
@@ -1359,7 +1426,5 @@ public abstract class ClearTool implements CTFunctions {
     public File getLogFile() {
         return this.launcher.getLogFile();
     }
-
-   
 
 }

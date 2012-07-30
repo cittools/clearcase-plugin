@@ -27,27 +27,41 @@
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler"
 	xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson"
 	xmlns:f="/lib/form">
+
+    <f:entry title="${%Work with dynamic views}" field="useDynamicView" >
+        <f:checkbox default="false"/>
+    </f:entry>
     
-	<f:entry title="${%Integration Stream}" field="streamName" >
+	<f:entry title="${%Re-use existing view}" field="useUpdate" >
+		<f:checkbox default="true"/>
+		<p>If checked, Hudson will try to use an existing view. 
+		If the view doesn't exist, it will be created.</p>
+	</f:entry>
+    
+  	<f:entry title="${%View name}" field="viewName" >
+ 		<f:textbox default="${descriptor.getDefaultViewPattern()}" />
+    </f:entry>
+    
+	<f:entry title="${%Stream selector}" field="stream" >
         <f:textbox />
 	</f:entry>
 	
-    <f:entry title="${%Main Component}" field="componentName" >
-        <f:textbox />
+	<f:entry title="${%Baseline level threshold}" name="baselineLevelThreshold" field="baselineLevelThreshold" >
+        <select class="setting-input" name="baselineLevelThreshold" >
+            <j:forEach var="level" items="${descriptor.promotionLevels}">
+                <f:option selected="${level==instance.baselineLevelThreshold}" 
+                          value="${level}">${level}</f:option>
+            </j:forEach>
+        </select>
     </f:entry>
     
-    <f:entry title="${%Promotion Level Threshold}" field="promotionLevelThreshold" >
-        <select class="setting-input" name="promotionLevelThreshold" >
-             <j:forEach var="level" items="${descriptor.promotionLevels}">
-                 <f:option selected="${level==instance.promotionLevelThreshold}" 
-                           value="${level}">${level}</f:option>
-             </j:forEach>
-         </select>
-    </f:entry>
+	<f:entry title="${%Load rules}" field="loadRules" >
+		<f:textarea />
+	</f:entry>
 
 	<f:advanced>
 	
-	    <f:entry title="${%Clearcase Configuration}" name="clearcaseConfig" field="clearcaseConfig" >
+	    <f:entry title="${%Clearcase configuration}" name="clearcaseConfig" field="clearcaseConfig" >
 	        <select class="setting-input" name="clearcaseConfig" >
 	            <option>(Default)</option>
 	            <j:forEach var="conf" items="${descriptor.configurations}">
@@ -57,5 +71,38 @@
 	        </select>
 	    </f:entry>
     
+        <f:entry title="${%Excluded regions}" field="excludedRegions" >
+            <f:textarea />
+        </f:entry>
+        
+		<f:entry title="${%Additional mkview arguments}" field="mkviewOptionalParam" >
+            <f:expandableTextbox />
+		</f:entry>
+		
+		<f:entry title="${%Multi-site poll buffer}" field="multiSitePollBuffer" >
+		    <f:textbox default="0" />
+		</f:entry>
+
+		<f:entry title="${%Ignore 'destroy sub branch' events}" 
+		         field="filteringOutDestroySubBranchEvent" >
+		    <f:checkbox default="true" />
+		    <p>If checked, Hudson will filter out <i>Destroy sub-branch "BRANCHNAME" of branch</i> 
+		    events when polling and retrieving change logs from a ClearCase repository.</p>
+	    </f:entry>
+	    
+		<f:entry title="${%Dynamic views root}" field="viewDrive" >
+		    <f:textbox default="${descriptor.getDefaultViewRoot()}" />
+		</f:entry>
+		
+		<f:entry title="${%Do not update config spec}" field="doNotUpdateConfigSpec" >
+	        <f:checkbox default="false"/>
+	        <p>If checked, Hudson will not use <tt>cleartool setcs</tt> even if the specifed 
+	        config spec is different from the dynamic view's current config spec.</p>
+	    </f:entry>
+	    
+	    <f:entry title="${%SCM Custom workspace}" field="customWorkspace" >
+            <f:textbox />
+        </f:entry>
+		
 	</f:advanced>
 </j:jelly>

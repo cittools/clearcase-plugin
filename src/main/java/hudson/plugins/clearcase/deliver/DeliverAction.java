@@ -22,7 +22,7 @@ public class DeliverAction {
         this.ct = ct;
     }
 
-    public boolean deliver(Baseline baseline, View view, AbstractBuild<?, ?> build)
+    public void deliver(Baseline baseline, View view, AbstractBuild<?, ?> build)
             throws IOException, InterruptedException, ClearToolError
     {
         try {
@@ -33,8 +33,6 @@ public class DeliverAction {
             ct.deliver(baseline, view, true);
 
             logger.log("Deliver successful.");
-
-            return true;
 
         } catch (DeliverError e) {
 
@@ -47,7 +45,7 @@ public class DeliverAction {
 
             ct.changeBaselinePromotionLevel(baseline, PromotionLevel.REJECTED);
 
-            return false;
+            throw e;
         }
 
     }
