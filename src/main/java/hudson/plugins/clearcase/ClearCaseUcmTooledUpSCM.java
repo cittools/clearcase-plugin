@@ -87,26 +87,30 @@ public class ClearCaseUcmTooledUpSCM extends ClearCaseUcmSCM {
             View view, ClearTool ct) throws IOException, InterruptedException, ClearToolError
     {
         Baseline deliveredBaseline = null;
-        logger.log("");
         for (Stream stream : ct.getChildStreams(view.getStream())) {
+            logger.log("Fetching baselines to deliver from stream " + stream + "...");
             List<Baseline> baselines = ct.getBaselines(stream, baselineLevelThreshold, false);
             if (!baselines.isEmpty()) {
                 deliveredBaseline = baselines.get(0);
+                break;
             }
         }
 
         UcmChangeLogSet changes = null;
 
         if (deliveredBaseline != null) {
-
+            logger.log("Delivering baseline " + deliveredBaseline + " to build view...");
             DeliverAction deliver = new DeliverAction(logger, ct);
             deliver.deliver(deliveredBaseline, view, build);
 
+            logger.log("Gathering baseline changelog...");
             UcmBaselineHistoryAction historyAction = new UcmBaselineHistoryAction(ct);
             changes = historyAction.getChanges(build, deliveredBaseline, view);
 
             DeliverEnvironment deliverEnv = new DeliverEnvironment(view, deliveredBaseline);
             ((FreeStyleBuild) build).getEnvironments().add(deliverEnv);
+        } else {
+            logger.log("No baseline to deliver.");
         }
 
         return changes;

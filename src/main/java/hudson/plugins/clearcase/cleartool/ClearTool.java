@@ -1363,10 +1363,9 @@ public abstract class ClearTool implements CTFunctions {
         String result = launcher.run(args, null);
 
         if (result != null) {
-            for (String s : result.split("\\s*,\\s")) {
-                if (!s.trim().isEmpty()) {
-                    streams.add(new Stream(s.trim()));
-                }
+            Matcher matcher = Pattern.compile("stream:([^,]+)").matcher(result);
+            while (matcher.find()) {
+                streams.add(new Stream(matcher.group(1).trim()));
             }
         }
 
