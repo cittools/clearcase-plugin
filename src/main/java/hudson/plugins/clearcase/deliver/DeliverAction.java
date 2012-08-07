@@ -39,7 +39,7 @@ public class DeliverAction {
             logger.log("Deliver error: " + e.getMessage());
 
             build.setResult(Result.FAILURE);
-            build.setDescription(e.getMessage());
+            build.setDescription("<small>" + e.getMessage() + "</small>");
 
             ct.deliverCancel(baseline.getStream(), view);
 
@@ -50,6 +50,4 @@ public class DeliverAction {
 
     }
     
-    
-
 }

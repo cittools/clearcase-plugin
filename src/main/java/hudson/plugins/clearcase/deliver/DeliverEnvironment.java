@@ -29,6 +29,8 @@ public class DeliverEnvironment extends Environment {
 
     private View deliverView;
     private Baseline deliveredBaseline;
+    // If the build is successfull tearDown is called without setting the build result...
+    private static final Result SUCCESS = null;
 
     public DeliverEnvironment() {
         super();
@@ -51,12 +53,11 @@ public class DeliverEnvironment extends Environment {
                 File ctLogFile = ClearToolLogFile.getCleartoolLogFile(build);
                 ClearCaseLogger logger = new ClearCaseLogger(listener, ctLogFile);
                 ClearTool ct = createCleartool(build, listener, ctLogFile);
-                if (Result.SUCCESS.equals(build.getResult())
-                        || Result.UNSTABLE.equals(build.getResult())) {
-                    logger.log("build result is " + build.getResult()
-                            + ", completing deliver...");
+                if (build.getResult() == SUCCESS) {
+                    logger.log("build result is " + Result.SUCCESS + ", completing deliver...");
                     ct.deliverComplete(deliveredBaseline.getStream(), deliverView);
                     ct.changeBaselinePromotionLevel(deliveredBaseline, PromotionLevel.BUILT);
+                    build.setDescription("<small>baseline delivered: <b>" + deliveredBaseline + "</b></small>");
                     logger.log("deliver successfully completed.");
                 } else {
                     logger.log("build result is " + build.getResult()

@@ -783,7 +783,10 @@ public abstract class ClearTool implements CTFunctions {
         
         List<String> activityNames = new ArrayList<String>();
         if (result != null) {
-            activityNames.addAll(Arrays.asList(result.split("\\s*,\\s*")));
+            Matcher matcher = Pattern.compile("activity:([^\\s]+)").matcher(result);
+            while (matcher.find()) {
+                activityNames.add(matcher.group(1));
+            }
         }
         return activityNames;
     }
@@ -1252,7 +1255,7 @@ public abstract class ClearTool implements CTFunctions {
         }
 
         try {
-            String result = launcher.run(args, viewPath);
+            launcher.run(args, viewPath);
         } catch (ClearToolError e) {
             /* Determine cause */
             if (e.getResult().contains("requires child development streams to rebase")) {
@@ -1264,7 +1267,8 @@ public abstract class ClearTool implements CTFunctions {
             } else if (e.getResult().contains(
                     "does not allow deliver operations from streams in other")) {
                 throw new DeliverError("Interproject deliver is forbidden by a ClearCase policy.");
-            } else if (e.getResult().contains("active deliver or rebase operation")) {
+            } else if (e.getResult().contains("operation already in progress on stream") || 
+                    e.getResult().contains("active deliver or rebase operation")) {
                 throw new DeliverError(
                         "Deliver/Rebase operation already in progress on target stream.");
             } else {

@@ -103,9 +103,15 @@ public class ClearCaseUcmTooledUpSCM extends ClearCaseUcmSCM {
             DeliverAction deliver = new DeliverAction(logger, ct);
             deliver.deliver(deliveredBaseline, view, build);
 
-            logger.log("Gathering baseline changelog...");
-            UcmBaselineHistoryAction historyAction = new UcmBaselineHistoryAction(ct);
-            changes = historyAction.getChanges(build, deliveredBaseline, view);
+            try {
+                logger.log("Gathering baseline changelog...");
+                UcmBaselineHistoryAction historyAction = new UcmBaselineHistoryAction(ct);
+                changes = historyAction.getChanges(build, deliveredBaseline, view);
+            } catch (ClearToolError e) {
+                logger.log("Error while gathering changelog, cancelling deliver...");
+                ct.deliverCancel(deliveredBaseline.getStream(), view);
+                throw e;
+            }
 
             DeliverEnvironment deliverEnv = new DeliverEnvironment(view, deliveredBaseline);
             ((FreeStyleBuild) build).getEnvironments().add(deliverEnv);
