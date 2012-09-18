@@ -21,7 +21,6 @@ public class ClearCaseUcmSCMDescriptor extends SCMDescriptor<ClearCaseUcmSCM> {
     
     public ClearCaseUcmSCMDescriptor() {
         super(ClearCaseUcmSCM.class, null);
-//        load();
     }
 
     /*******************************

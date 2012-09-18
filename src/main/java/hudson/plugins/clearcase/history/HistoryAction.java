@@ -54,6 +54,10 @@ public abstract class HistoryAction {
     protected List<Filter> filters;
     protected String extendedViewPath;
 
+    public HistoryAction(ClearTool cleartool) {
+        this.cleartool = cleartool;
+    }
+    
     public HistoryAction(ClearTool cleartool, List<Filter> filters) {
         this.cleartool = cleartool;
         this.filters = filters != null ? filters : new ArrayList<Filter>();

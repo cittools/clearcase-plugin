@@ -42,7 +42,7 @@
  		<f:textbox default="${descriptor.getDefaultViewPattern()}" />
     </f:entry>
     
-	<f:entry title="${%Stream selector}" field="stream" >
+	<f:entry title="${%Integration stream selector}" field="stream" >
         <f:textbox />
 	</f:entry>
 	

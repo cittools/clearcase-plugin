@@ -12,13 +12,11 @@ import hudson.plugins.clearcase.history.UcmBaselineHistoryAction;
 import hudson.plugins.clearcase.log.ClearCaseLogger;
 import hudson.plugins.clearcase.objects.Baseline;
 import hudson.plugins.clearcase.objects.Baseline.PromotionLevel;
-import hudson.plugins.clearcase.objects.Stream;
 import hudson.plugins.clearcase.objects.View;
 import hudson.plugins.clearcase.util.ClearToolError;
 import hudson.scm.SCMDescriptor;
 
 import java.io.IOException;
-import java.util.List;
 
 import org.kohsuke.stapler.DataBoundConstructor;
 
@@ -29,7 +27,7 @@ public class ClearCaseUcmTooledUpSCM extends ClearCaseUcmSCM {
 
     @Override
     public SCMDescriptor<?> getDescriptor() {
-        return ClearCaseUcmTooledUpSCM.DESCRIPTOR;
+        return DESCRIPTOR;
     }
 
     public static final String CLEARCASE_BUILT_BASELINE_ENVSTR = "CLEARCASE_DELIVERED_BASELINE";
@@ -74,7 +72,7 @@ public class ClearCaseUcmTooledUpSCM extends ClearCaseUcmSCM {
 
     @Override
     protected HistoryAction createHistoryAction(ClearTool ct) {
-        return null;
+        return new UcmBaselineHistoryAction(ct, baselineLevelThreshold);
     }
 
     @Override
@@ -86,18 +84,12 @@ public class ClearCaseUcmTooledUpSCM extends ClearCaseUcmSCM {
     protected UcmChangeLogSet gatherChangelog(AbstractBuild<?, ?> build, ClearCaseLogger logger,
             View view, ClearTool ct) throws IOException, InterruptedException, ClearToolError
     {
-        Baseline deliveredBaseline = null;
-        for (Stream stream : ct.getChildStreams(view.getStream())) {
-            logger.log("Fetching baselines to deliver from stream " + stream + "...");
-            List<Baseline> baselines = ct.getBaselines(stream, baselineLevelThreshold, false);
-            if (!baselines.isEmpty()) {
-                deliveredBaseline = baselines.get(0);
-                break;
-            }
-        }
+
+        UcmBaselineHistoryAction historyAction = new UcmBaselineHistoryAction(ct,
+                baselineLevelThreshold);
+        Baseline deliveredBaseline = historyAction.findBaseline(view);
 
         UcmChangeLogSet changes = null;
-
         if (deliveredBaseline != null) {
             logger.log("Delivering baseline " + deliveredBaseline + " to build view...");
             DeliverAction deliver = new DeliverAction(logger, ct);
@@ -105,7 +97,6 @@ public class ClearCaseUcmTooledUpSCM extends ClearCaseUcmSCM {
 
             try {
                 logger.log("Gathering baseline changelog...");
-                UcmBaselineHistoryAction historyAction = new UcmBaselineHistoryAction(ct);
                 changes = historyAction.getChanges(build, deliveredBaseline, view);
             } catch (ClearToolError e) {
                 logger.log("Error while gathering changelog, cancelling deliver...");
