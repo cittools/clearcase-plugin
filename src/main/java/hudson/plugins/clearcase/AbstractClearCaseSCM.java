@@ -631,7 +631,10 @@ public abstract class AbstractClearCaseSCM extends SCM {
                         + "please launch the build manually.");
             }
         }
-        ct.update(prevBuildView);
+
+        if (!doNotUpdateConfigSpec) {
+            ct.update(prevBuildView);
+        }
 
         return historyAction.pollChanges(buildTime.getTime(), prevBuildView, getBranchNames(),
                 getViewPaths(workspace));
