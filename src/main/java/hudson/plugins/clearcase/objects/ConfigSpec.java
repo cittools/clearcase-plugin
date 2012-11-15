@@ -28,9 +28,9 @@ public class ConfigSpec {
      * This regular expression is quite tricky. It matches any config spec line that contains a
      * "LATEST" and allows to isolate any existing "-time XXXXXXXXX" rule.
      */
-    private static final Pattern LATEST_PATTERN = Pattern.compile(
-            "^(.+)LATEST([ \\t]+-time[ \\t]+\\S+)?(.*)$", Pattern.MULTILINE);
-
+    private static final Pattern LATEST_PATTERN = Pattern.compile("^(.+)/LATEST[ \\t]*(.*?)$",
+            Pattern.MULTILINE);
+    private static final Pattern TIME_PATTERN = Pattern.compile("-time[\\s]+\\S+");
     private String value;
 
     // // CONSTRUCTORS ////////////////////////////////////////////////////////////
@@ -111,7 +111,22 @@ public class ConfigSpec {
         } else {
             timeStr = Tools.formatCleartoolDate(time);
         }
-        value = LATEST_PATTERN.matcher(value).replaceAll("$1LATEST -time " + timeStr + "$3");
+
+        StringBuffer sb = new StringBuffer(value.length());
+
+        Matcher lineMatcher = LATEST_PATTERN.matcher(value);
+        while (lineMatcher.find()) {
+            // remove exiting -time rules, if any
+            String args = TIME_PATTERN.matcher(lineMatcher.group(2)).replaceAll("");
+            String newLine = String.format("%s/LATEST -time %s %s", lineMatcher.group(1), timeStr,
+                    args);
+            // lol, Java escapes \ characters without looking what's after them...
+            newLine = newLine.replaceAll("\\\\", "\\\\\\\\");
+            lineMatcher.appendReplacement(sb, newLine);
+        }
+        lineMatcher.appendTail(sb);
+
+        value = sb.toString();
     }
 
     // // ACCESSORS ////////////////////////////////////////////////////////////

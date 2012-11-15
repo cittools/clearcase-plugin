@@ -5,11 +5,20 @@ import static org.junit.Assert.*;
 import hudson.plugins.clearcase.objects.ConfigSpec;
 import hudson.plugins.clearcase.util.Tools;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
 import org.junit.Test;
 
 public class ConfigSpecTest {
@@ -73,18 +82,30 @@ public class ConfigSpecTest {
 
         String timeStr = Tools.formatCleartoolDate(time);
 
-        assertTrue(cs.getValue().contains(
-                ".../dev_steam/LATEST -time " + timeStr + " -mkbranch dev_steam"));
-        assertTrue(cs.getValue().contains(
-                ".../dev_steam2/LATEST -time " + timeStr + " -mkbranch dev_steam"));
+        assertTrue(cs.getValue().contains(".../dev_steam/LATEST -time " + timeStr));
+        assertTrue(cs.getValue().contains(".../dev_steam2/LATEST -time " + timeStr));
     }
 
     @Test
     public void testAddTimeNowRules() {
         ConfigSpec cs = new ConfigSpec(SELECT_RULES);
         cs.addTimeRules(null);
-        assertTrue(cs.getValue().contains(".../dev_steam/LATEST -time now -mkbranch dev_steam"));
-        assertTrue(cs.getValue().contains(".../dev_steam2/LATEST -time now -mkbranch dev_steam"));
+        assertTrue(cs.getValue().contains(".../dev_steam/LATEST -time now"));
+        assertTrue(cs.getValue().contains(".../dev_steam2/LATEST -time now"));
+    }
+
+    @Test
+    public void testLatestInStreamName() throws IOException, URISyntaxException {
+
+        String before = FileUtils.readFileToString(new File(getClass().getResource(
+                "configspec_latest.txt").toURI()));
+        String after = FileUtils.readFileToString(new File(getClass().getResource(
+                "configspec_latest_modified.txt").toURI()));
+
+        ConfigSpec cs = new ConfigSpec(before);
+
+        cs.addTimeRules(null);
+        assertEquals(after, cs.getValue());
     }
 
 }

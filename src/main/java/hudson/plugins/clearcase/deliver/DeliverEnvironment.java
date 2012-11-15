@@ -57,7 +57,8 @@ public class DeliverEnvironment extends Environment {
                     logger.log("build result is " + Result.SUCCESS + ", completing deliver...");
                     ct.deliverComplete(deliveredBaseline.getStream(), deliverView);
                     ct.changeBaselinePromotionLevel(deliveredBaseline, PromotionLevel.BUILT);
-                    build.setDescription("<small>baseline delivered: <b>" + deliveredBaseline + "</b></small>");
+                    build.setDescription("<small>baseline delivered: <b>" + deliveredBaseline
+                            + "</b> from stream: <b>" + deliveredBaseline.getStream() + "</b></small>");
                     logger.log("deliver successfully completed.");
                 } else {
                     logger.log("build result is " + build.getResult()
