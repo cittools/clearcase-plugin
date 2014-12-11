@@ -145,7 +145,7 @@ public class ClearCaseUcmSCM extends AbstractClearCaseSCM {
     /** implementation of abstract method {@link AbstractClearCaseSCM#createCheckOutAction()} */
     @Override
     protected CheckoutAction createCheckoutAction(ClearTool ct, ClearCaseLogger logger, View view,
-            String stgloc)
+            String stgloc, int ccCmdDelay)
     {
         CheckoutAction action;
         if (isUseDynamicView()) {
@@ -154,7 +154,7 @@ public class ClearCaseUcmSCM extends AbstractClearCaseSCM {
                     ClearCaseBaseSCM.BASE_DESCRIPTOR.getTimeShift());
         } else {
             action = new UcmSnapshotCheckoutAction(ct, logger, view, stgloc,
-                    getMkviewOptionalParam(), isUseUpdate(), getViewPaths(ct.getWorkspace()));
+                    getMkviewOptionalParam(), isUseUpdate(), getViewPaths(ct.getWorkspace()),ccCmdDelay);
         }
         return action;
     }

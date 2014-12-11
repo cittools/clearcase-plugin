@@ -43,9 +43,9 @@ public class UcmSnapshotCheckoutAction extends CheckoutAction {
     private final List<String> loadRules;
 
     public UcmSnapshotCheckoutAction(ClearTool cleartool, ClearCaseLogger logger, View view,
-            String stgloc, String mkViewOptionalParams, boolean useUpdate, List<String> loadRules)
+            String stgloc, String mkViewOptionalParams, boolean useUpdate, List<String> loadRules, int ccCmdDelay)
     {
-        super(cleartool, logger, view, stgloc, mkViewOptionalParams, useUpdate);
+        super(cleartool, logger, view, stgloc, mkViewOptionalParams, useUpdate, ccCmdDelay);
         this.loadRules = loadRules;
     }
 
@@ -101,10 +101,14 @@ public class UcmSnapshotCheckoutAction extends CheckoutAction {
                         + " is not attached to any stream.");
             }
             if (useUpdate && correctStream) {
-
+                //ending viewserver process to prevent any update action in progress.
+                //useful if a previous update has been killed    
+            	logger.log("Ending vue and Sleeping for "+ccCmdDelay + " seconds ... ");
+                cleartool.endviewServer(existingView,ccCmdDelay);
+             try{ 
+                
                 logger.log("Searching for changes in load rules...");
-                ConfigSpec configSpec = new ConfigSpec(cleartool.catcs(existingView));
-
+                ConfigSpec configSpec = new ConfigSpec(cleartool.catcs(existingView));            
                 if (configSpec.loadRulesDiffer(this.loadRules)) {
                     logger.log("Load rules have changed. Updating view...");
                     configSpec.replaceLoadRules(this.loadRules, Tools.isWindows(workspace));
@@ -113,9 +117,12 @@ public class UcmSnapshotCheckoutAction extends CheckoutAction {
                     logger.log("No changes in load rules. Updating view...");
                     cleartool.update(existingView);
                 }
+             }finally{
+            	 cleartool.endviewServer(existingView,ccCmdDelay);
+             }
             } else {
-                logger.log("Deleting old view...");
-                cleartool.rmview(existingView);
+                logger.log("Deleting view and Sleeping for "+ccCmdDelay + " seconds ...");
+                cleartool.rmview(existingView,false, ccCmdDelay);
                 createView = true;
             }
         } else {

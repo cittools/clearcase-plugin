@@ -2,7 +2,7 @@ package hudson.plugins.clearcase.history;
 
 import hudson.model.AbstractBuild;
 import hudson.plugins.clearcase.changelog.ClearCaseChangeLogSet;
-import hudson.plugins.clearcase.changelog.UcmChangeLogSet;
+import hudson.plugins.clearcase.changelog.BaselineChangeLogSet;
 import hudson.plugins.clearcase.cleartool.ClearTool;
 import hudson.plugins.clearcase.cleartool.HistoryFormatHandler;
 import hudson.plugins.clearcase.objects.Baseline;
@@ -28,18 +28,21 @@ public class UcmBaselineHistoryAction extends HistoryAction {
         this.baselineLevelThreshold = threshold;
     }
 
-    public UcmChangeLogSet getChanges(AbstractBuild<?, ?> build, Baseline baseline, View view)
+    public BaselineChangeLogSet getChanges(AbstractBuild<?, ?> build, Baseline baseline, View view)
             throws IOException, InterruptedException, ClearToolError
     {
-        UcmChangeLogSet changeLog = null;
-        List<String> baselineActivities = cleartool.getBaselineActivities(baseline);
+        BaselineChangeLogSet changeLog = null;
+        List<String> baselineActivities = cleartool.getBaselineActivitiesToStream(baseline,view.getStream());
 
         if (!baselineActivities.isEmpty()) {
             List<UcmActivity> activities = new ArrayList<UcmActivity>();
             for (String activityName : baselineActivities) {
-                activities.add(cleartool.lsactivityFull(activityName, view));
+                HistoryFormatHandler handler = new HistoryFormatHandler(UcmHistoryAction.ACTIVITY_FORMAT);
+                UcmActivity act = cleartool.lsactivity(activityName, handler, view);
+                act.setFiles(cleartool.getActivityChangelog(act, view));
+                activities.add(act);
             }
-            changeLog = new UcmChangeLogSet(build, activities);
+            changeLog = new BaselineChangeLogSet(build, baseline, activities);
         }
 
         return changeLog;

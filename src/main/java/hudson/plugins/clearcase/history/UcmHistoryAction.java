@@ -61,9 +61,11 @@ public class UcmHistoryAction extends HistoryAction {
         HistoryFormatHandler.UCM_ACTIVITY_STREAM,
         HistoryFormatHandler.USER_ID,
         HistoryFormatHandler.UCM_ACTIVITY_CONTRIBUTING,
-        HistoryFormatHandler.COMMENT_NONEWLINE
+        HistoryFormatHandler.COMMENT_NONEWLINE,
+        HistoryFormatHandler.NAME_ELEMENTNAME
     };
 
+   
 
     private HistoryFormatHandler historyHandler = new HistoryFormatHandler(HISTORY_FORMAT);
 

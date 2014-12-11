@@ -45,19 +45,21 @@ public abstract class CheckoutAction {
     protected final View view;
     protected final String stgloc;
     protected final String mkViewOptionalParams;
-    protected final boolean useUpdate; 
+    protected final boolean useUpdate;
+    protected final int ccCmdDelay;
     
     /*****************
      ** CONSTRUCTOR **
      *****************/
 	public CheckoutAction(ClearTool cleartool, ClearCaseLogger logger, View view, String stgloc,
-			String mkViewOptionalParams, boolean useUpdate) {
+			String mkViewOptionalParams, boolean useUpdate, int ccCmdDelay) {
 		this.cleartool = cleartool;
 		this.logger = logger;
 		this.view = view;
 		this.stgloc = stgloc;
 		this.mkViewOptionalParams = mkViewOptionalParams;
 		this.useUpdate = useUpdate;
+		this.ccCmdDelay = ccCmdDelay;
 	}
 
     /*********************

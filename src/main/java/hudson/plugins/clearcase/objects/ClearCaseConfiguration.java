@@ -14,13 +14,15 @@ public final class ClearCaseConfiguration {
     private final String cleartoolExe;
     private final String stgloc;
     private final int changeLogMergeTimeWindow;
+    private final int ccCmdDelay;
     
     @DataBoundConstructor
-    public ClearCaseConfiguration(String name, String cleartoolExe, String stgloc, int changeLogMergeTimeWindow) {
+    public ClearCaseConfiguration(String name, String cleartoolExe, String stgloc, int changeLogMergeTimeWindow, int ccCmdDelay) {
         this.name = name;
         this.cleartoolExe = cleartoolExe;
         this.stgloc = stgloc;
         this.changeLogMergeTimeWindow = changeLogMergeTimeWindow;
+        this.ccCmdDelay = ccCmdDelay;
     }
 
     public String getName() {
@@ -37,6 +39,10 @@ public final class ClearCaseConfiguration {
 
     public int getChangeLogMergeTimeWindow() {
         return changeLogMergeTimeWindow;
+    }
+    
+    public int getccCmdDelay() {
+        return ccCmdDelay;
     }
 
 }

@@ -53,6 +53,10 @@ public class Baseline {
         this.component = component;
     }
     
+    public Baseline() {
+        
+    }
+    
     /*******************************
      **** METHODS ******************
      *******************************/

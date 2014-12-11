@@ -16,7 +16,7 @@ public class AffectedFile implements hudson.scm.ChangeLogSet.AffectedFile {
     private String dateStr = "";
     private String version = "";
     private String action = "";
-    private String operation = "";
+    private String operation = "checkin";
     private String event = "";
     private String comment = "";
     

@@ -103,7 +103,7 @@ public class UcmChangeLogSet extends ClearCaseChangeLogSet<UcmActivity> {
         fileOutputStream.close();
     }
 
-    private void printFile(PrintStream stream, hudson.plugins.clearcase.objects.AffectedFile file) {
+    protected void printFile(PrintStream stream, hudson.plugins.clearcase.objects.AffectedFile file) {
         stream.println("\t\t<file>");
         stream.println("\t\t\t<name>" + escapeXml(file.getName()) + "</name>");
         stream.println("\t\t\t<date>" + escapeXml(file.getDateStr()) + "</date>");
@@ -114,7 +114,7 @@ public class UcmChangeLogSet extends ClearCaseChangeLogSet<UcmActivity> {
         stream.println("\t\t</file>");
     }
 
-    private void printSubActivity(PrintStream stream, UcmActivity activity) {
+    protected void printSubActivity(PrintStream stream, UcmActivity activity) {
         stream.println("\t\t<subactivity>");
         stream.println("\t\t\t<name>" + escapeXml(activity.getName()) + "</name>");
         stream.println("\t\t\t<headline>" + escapeXml(activity.getHeadline()) + "</headline>");

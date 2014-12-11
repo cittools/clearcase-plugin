@@ -51,6 +51,10 @@ public class ClearCaseBaseSCMDescriptor extends SCMDescriptor<ClearCaseBaseSCM> 
     private volatile String stgloc = "";
     @CopyOnWrite
     private volatile int timeShift = 0;
+ 
+    @CopyOnWrite
+    private volatile int ccCmdDelay = 0;
+    
     @CopyOnWrite
     private volatile ClearCaseConfiguration[] configurations = new ClearCaseConfiguration[0];
 
@@ -86,9 +90,11 @@ public class ClearCaseBaseSCMDescriptor extends SCMDescriptor<ClearCaseBaseSCM> 
             this.configurations = req.bindParametersToList(ClearCaseConfiguration.class, "cc.")
                     .toArray(new ClearCaseConfiguration[0]);
             this.stgloc = json.getString("stgloc");
+            this.ccCmdDelay = json.getInt("ccCmdDelay");
         } catch (JSONException jex) {
             this.cleartoolExe = "cleartool";
             this.stgloc = "";
+            this.ccCmdDelay=0;
             this.configurations = new ClearCaseConfiguration[0];
         }
         try {
@@ -124,6 +130,9 @@ public class ClearCaseBaseSCMDescriptor extends SCMDescriptor<ClearCaseBaseSCM> 
         return stgloc;
     }
 
+    public int getccCmdDelay(){
+    	return ccCmdDelay;
+    }
     public int getTimeShift() {
         return timeShift;
     }
@@ -141,7 +150,7 @@ public class ClearCaseBaseSCMDescriptor extends SCMDescriptor<ClearCaseBaseSCM> 
             }
         }
         return new ClearCaseConfiguration(DEFAULT_CONFIG, cleartoolExe, stgloc,
-                changeLogMergeTimeWindow);
+                changeLogMergeTimeWindow,ccCmdDelay);
     }
 
     /*******************************
@@ -181,6 +190,18 @@ public class ClearCaseBaseSCMDescriptor extends SCMDescriptor<ClearCaseBaseSCM> 
             return FormValidation.ok();
         }
 
+    }    
+    
+    public FormValidation doCheckccCmdDelay(@QueryParameter String value) {
+        try {
+            int v = Integer.parseInt(value);
+            if (v < 0) {
+                return FormValidation.error("This field must contain a positive integer.");
+            }
+        } catch (NumberFormatException e) {
+            return FormValidation.error("This field must contain a positive integer.");
+        }
+        return FormValidation.ok();
     }
 
     /** Checks if timeShift is valid. */

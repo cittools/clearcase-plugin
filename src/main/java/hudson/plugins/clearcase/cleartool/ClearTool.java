@@ -54,6 +54,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -367,12 +368,12 @@ public abstract class ClearTool implements CTFunctions {
     }
 
     public void rmview(View view) throws IOException, InterruptedException, ClearToolError {
-        rmview(view, false);
+        rmview(view, false,0);
     }
 
     /** implements {@link CTFunctions#rmview(View)} **/
     @Override
-    public void rmview(View view, boolean useTag) throws IOException, InterruptedException,
+    public void rmview(View view, boolean useTag, int ccCmdDelay) throws IOException, InterruptedException,
             ClearToolError
     {
         ArgumentListBuilder args = new ArgumentListBuilder();
@@ -387,6 +388,9 @@ public abstract class ClearTool implements CTFunctions {
             execPath = getWorkspace();
         }
         launcher.run(args, execPath);
+        if (ccCmdDelay > 0) {
+            Thread.sleep(TimeUnit.SECONDS.toMillis(ccCmdDelay));
+        }
     }
 
     /** implements {@link CTFunctions#rmtag(View)} **/
@@ -506,8 +510,9 @@ public abstract class ClearTool implements CTFunctions {
 
     /** implements {@link CTFunctions#update(View)} **/
     @Override
-    public void update(View view) throws IOException, InterruptedException, ClearToolError {
-        ArgumentListBuilder args = new ArgumentListBuilder();
+    public void update(View view) throws IOException, InterruptedException, ClearToolError {    
+  	
+    	ArgumentListBuilder args = new ArgumentListBuilder();
 
         args.add("setcs");
         if (view.isDynamic()) {
@@ -613,8 +618,7 @@ public abstract class ClearTool implements CTFunctions {
         try {
             result = launcher.run(args, viewPath);
         } catch (ClearToolError e) {
-            if (e.getResult().contains("cleartool: Error: Branch type not found:")
-                    && e.getCode() == 0) {
+            if (e.getResult().contains("cleartool: Error: Branch type not found:")) {
                 /*
                  * this can happen if we ask for a read only path in the view. we ignore this error
                  */
@@ -724,13 +728,13 @@ public abstract class ClearTool implements CTFunctions {
         return formatHandler.parseActivity(result);
     }
     
-    public UcmActivity lsactivityFull(String activityName, View view) throws IOException,
+    public List<AffectedFile> getActivityChangelog(UcmActivity activity, View view) throws IOException,
             InterruptedException, ClearToolError
     {
         ArgumentListBuilder args = new ArgumentListBuilder();
-        args.add("desc");
-        args.add("-l");
-        args.add("activity:" + activityName);
+        args.add("lsactivity");
+        args.add("-fmt", "\"%[versions]CQp\"");
+        args.add(activity.getName());
 
         FilePath viewPath;
         if (view.getViewPath() != null) {
@@ -743,36 +747,30 @@ public abstract class ClearTool implements CTFunctions {
 
         String result = launcher.run(args, viewPath);
         
-        UcmActivity activity = null;
+        List<AffectedFile> files = new ArrayList<AffectedFile>();
         
         if (result != null) {
-            activity = new UcmActivity();
-            
-            Matcher ownerMatcher = Pattern.compile("owner:\\s*(.*?)$").matcher(result);
-            if (ownerMatcher.find())
-                activity.setUser(ownerMatcher.group(1));
-            
-            Matcher titleMatcher = Pattern.compile("title:\\s*(.*?)$").matcher(result);
-            if (titleMatcher.find())
-                activity.setHeadline(titleMatcher.group(1));
-            
-            Matcher dateMatcher = Pattern.compile("created\\s*(.*?)\\s").matcher(result);
-            if (dateMatcher.find())
-                activity.setDateStr(dateMatcher.group(1));
-            
-            String[] split = result.split("change set versions:");
-            for (String f : split[1].trim().split("\\s*\\n+\\s*")) {
-                AffectedFile file = new AffectedFile();
-                file.setName(f.substring(view.getViewPath().length()));
-                activity.getAffectedFiles().add(file);
+            int viewPathLength = view.getViewPath().length();
+            for (String f : result.split("\\s*,\\s+")) {
+                f = f.replace("\"", "");
+                if (f.length() > viewPathLength) {
+                    f = f.substring(viewPathLength);
+                    AffectedFile file = new AffectedFile();
+                    file.setName(f.substring(0, f.indexOf("@@")));
+                    file.setOperation("checkin");
+                    file.setDate(activity.getDate());
+                    file.setVersion(f.substring(f.indexOf("@@") + 2));
+                    
+                    files.add(file);
+                }
             }
         }
 
-        return activity;
+        return files;
     }
     
     public List<String> getBaselineActivities(Baseline baseline) throws IOException,
-    InterruptedException, ClearToolError
+            InterruptedException, ClearToolError
     {
         ArgumentListBuilder args = new ArgumentListBuilder();
         args.add("lsbl");
@@ -785,11 +783,39 @@ public abstract class ClearTool implements CTFunctions {
         if (result != null) {
             Matcher matcher = Pattern.compile("activity:([^\\s]+)").matcher(result);
             while (matcher.find()) {
-                activityNames.add(matcher.group(1));
+                String name = matcher.group(1);
+                if (name.startsWith("rebase.") || name.startsWith("deliver.")) {
+                    activityNames.add(name);
+                }
             }
         }
         return activityNames;
     }
+    
+    
+	public List<String> getBaselineActivitiesToStream(Baseline baseline, Stream stream)
+			throws IOException, InterruptedException, ClearToolError {
+		ArgumentListBuilder args = new ArgumentListBuilder();
+		args.add("diffbl");
+		args.add("-activities");
+		args.add(baseline.toString());
+		args.add("stream:"+stream.getName()+"@"+stream.getPvob());
+
+		String result = launcher.run(args, null);
+
+		List<String> activityNames = new ArrayList<String>();
+		if (result != null) {
+            Matcher matcher = Pattern.compile("(>>|<<) (.+?)( \")").matcher(result);
+            while (matcher.find()) {
+                String name = matcher.group(2);   
+                if (! (name.startsWith("rebase.") || name.startsWith("deliver.")) ){
+                    activityNames.add(name);
+                }                
+            }
+        }
+		
+		return activityNames;
+	}
     
 
     /** implements {@link CTFunctions#catcs(View)} **/
@@ -810,7 +836,7 @@ public abstract class ClearTool implements CTFunctions {
         FilePath configSpecFile = launcher.getWorkspace().createTextTempFile(view.getName(),
                 ".configSpec", configSpec);
         String csLocation = configSpecFile.getRemote();
-
+        
         ArgumentListBuilder args = new ArgumentListBuilder();
         args.add("setcs");
         args.add("-tag", view.getName());
@@ -1428,6 +1454,23 @@ public abstract class ClearTool implements CTFunctions {
 
     public File getLogFile() {
         return this.launcher.getLogFile();
+    }
+    
+    public void endviewServer(View view, int ccCmdDelay) throws IOException, InterruptedException, ClearToolError {
+        ArgumentListBuilder args = new ArgumentListBuilder();
+
+        args.add("endview");
+        args.add("-server");
+        args.add(view.getName());
+
+        String output = launcher.run(args, null);
+        if (ccCmdDelay > 0) {
+            Thread.sleep(TimeUnit.SECONDS.toMillis(ccCmdDelay));
+        }
+        if (output.contains("cleartool: Error")) {
+            throw new IOException("Failed to end view tag: " + output);
+        }
+        
     }
 
 }

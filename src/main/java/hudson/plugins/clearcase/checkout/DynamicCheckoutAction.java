@@ -38,42 +38,50 @@ import java.io.IOException;
 import java.util.Calendar;
 import java.util.Date;
 
-
 public class DynamicCheckoutAction extends CheckoutAction {
 
     private final String configSpec;
     private final boolean doNotUpdateConfigSpec;
     private final int timeShift;
-
+    private final boolean freezeView;
 
     public DynamicCheckoutAction(ClearTool cleartool, ClearCaseLogger logger, View view,
             String stgloc, String mkViewOptionalParams, boolean useUpdate, String configSpec,
             boolean doNotUpdateConfigSpec, int timeShift)
     {
-        super(cleartool, logger, view, stgloc, mkViewOptionalParams, useUpdate);
+        this(cleartool, logger, view, stgloc, mkViewOptionalParams, useUpdate, configSpec,
+                doNotUpdateConfigSpec, timeShift, true);
+    }
+
+    public DynamicCheckoutAction(ClearTool cleartool, ClearCaseLogger logger, View view,
+            String stgloc, String mkViewOptionalParams, boolean useUpdate, String configSpec,
+            boolean doNotUpdateConfigSpec, int timeShift, boolean freezeView)
+    {
+        super(cleartool, logger, view, stgloc, mkViewOptionalParams, useUpdate,0);
         this.configSpec = configSpec;
         this.doNotUpdateConfigSpec = doNotUpdateConfigSpec;
         this.timeShift = timeShift;
+        this.freezeView = freezeView;
     }
-
 
     @Override
     public boolean checkout(@SuppressWarnings("rawtypes") AbstractBuild build, TaskListener listener)
             throws IOException, InterruptedException, ClearToolError
     {
         boolean viewExists = false, createView = false;
-        
+
         View existingView = new View(view.getName());
         logger.log("Fetching view info...");
         try {
             viewExists = cleartool.getViewInfo(existingView);
         } catch (ClearToolError cte) {
-            /* the server hosting the view was not reachable
-             * we consider that the view already exists
-             * therefore, this view tag cannot be used */
+            /*
+             * the server hosting the view was not reachable we consider that the view already
+             * exists therefore, this view tag cannot be used
+             */
             throw new ClearToolError("The view tag : " + view + " is already in use"
-                    + " but the view's host cannot be reached,"
-                    + " please use another view tag.", cte);
+                    + " but the view's host cannot be reached," + " please use another view tag.",
+                    cte);
         }
 
         if (viewExists) {
@@ -95,7 +103,7 @@ public class DynamicCheckoutAction extends CheckoutAction {
         cleartool.startView(view);
 
         if (!doNotUpdateConfigSpec) {
-        	logger.log("Updating config spec...");
+            logger.log("Updating config spec...");
 
             /* resolution of variables in the configspec */
             ConfigSpec jobConfSpec = new ConfigSpec(cleartool.getEnv().expand(configSpec));
@@ -104,14 +112,18 @@ public class DynamicCheckoutAction extends CheckoutAction {
                     ORIGINAL_CONFIG_SPEC, jobConfSpec.getValue()));
             /* we can ignore load rules in dynamic views */
             jobConfSpec.removeLoadRules();
-            /* We add "-time" rules next to the element with "LATEST" rules.
-               This way, we are sure that the view contents will not change during the build. */
-            Calendar cal = Calendar.getInstance();
-            cal.add(Calendar.SECOND, timeShift);
-            Date time = cal.getTime();
-            logger.log("Freezing view at " + time + "...");
-            jobConfSpec.addTimeRules(time);
-            
+
+            if (freezeView) {
+                /*
+                 * We add "-time" rules next to the element with "LATEST" rules. This way, we are
+                 * sure that the view contents will not change during the build.
+                 */
+                Calendar cal = Calendar.getInstance();
+                cal.add(Calendar.SECOND, timeShift);
+                Date time = cal.getTime();
+                logger.log("Freezing view at " + time + "...");
+                jobConfSpec.addTimeRules(time);
+            }
             cleartool.setcs(view, jobConfSpec.getValue());
         }
 

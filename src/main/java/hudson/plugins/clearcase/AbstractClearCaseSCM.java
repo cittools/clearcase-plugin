@@ -197,6 +197,7 @@ public abstract class AbstractClearCaseSCM extends SCM {
             logger.log("Using ClearCase configuration: " + config.getName());
             logger.log("ClearCase executable: " + config.getCleartoolExe());
             String storageLocation = Util.fixEmptyAndTrim(config.getStgloc());
+            int ccCmdDelay = config.getccCmdDelay();
             if (storageLocation != null) {
                 logger.log("View storage: " + storageLocation);
             }
@@ -208,7 +209,7 @@ public abstract class AbstractClearCaseSCM extends SCM {
                     .getBuiltOn().getRootPath(), env, ctLogFile, null);
 
             CheckoutAction checkoutAction = createCheckoutAction(cleartool, logger, view,
-                    storageLocation);
+                    storageLocation, ccCmdDelay);
 
             // Checkout source files
             checkoutAction.checkout(build, listener);
@@ -477,7 +478,7 @@ public abstract class AbstractClearCaseSCM extends SCM {
      * @return an action that can check out code from a ClearCase repository.
      */
     protected abstract CheckoutAction createCheckoutAction(ClearTool ct, ClearCaseLogger logger,
-            View view, String stgloc);
+            View view, String stgloc, int ccCmdDelay);
 
     /**
      * Create a HistoryAction that will be used by the pollChanges() and checkout() method.
@@ -600,18 +601,21 @@ public abstract class AbstractClearCaseSCM extends SCM {
         if (getEnv() == null)
             this.setEnv(env);
 
-        Node node = null;
-        if (project.getAssignedLabel() != null) {
-            for (Node n : project.getAssignedLabel().getNodes()) {
-                if (n.getChannel() == launcher.getChannel()) {
-                    node = n;
-                    break;
-                }
-            }
-        } else {
-            node = Computer.currentComputer().getNode();
-        }
+        Node node = Computer.currentComputer().getNode();
+        Node lastUsedNode =project.getLastBuiltOn();
+        if ( lastUsedNode != null) node = lastUsedNode;
+//        if (project.getAssignedLabel() != null) {
+//            for (Node n : project.getAssignedLabel().getNodes()) {
+//                if (n.getChannel() == launcher.getChannel()) {
+//                    node = n;
+//                    break;
+//                }
+//            }
+//        } else {
+//            node = Computer.currentComputer().getNode();
+//        }
 
+        
         String nodeName = node.getNodeName();
         FilePath nodeRoot = node.getRootPath();
         ClearCaseConfiguration config = fetchClearCaseConfig(nodeName);
@@ -885,7 +889,8 @@ public abstract class AbstractClearCaseSCM extends SCM {
 
                 if (!buildView.isDynamic()) {
                     /* we only remove snapshot views */
-                    ct.rmview(buildView, true);
+                	int ccCmdDelay = config.getccCmdDelay();
+                    ct.rmview(buildView, true,ccCmdDelay);
                     logger.info(String.format("Removed view '%s'", buildView.getName()));
                 }
             } catch (ClearToolError e) {
@@ -923,7 +928,8 @@ public abstract class AbstractClearCaseSCM extends SCM {
         @Override
         public void onCompleted(AbstractBuild build, TaskListener listener) {
 
-            if (build.getProject().getScm() instanceof AbstractClearCaseSCM) {
+            if (build.getProject().getScm() instanceof AbstractClearCaseSCM
+                    && !(build.getProject().getScm() instanceof ClearCaseUcmTooledUpSCM)) {
                 AbstractClearCaseSCM scm = (AbstractClearCaseSCM) build.getProject().getScm();
                 if (scm.isUseDynamicView()) {
                     StringParameterValue configSpec = CCParametersAction.getBuildParameter(build,

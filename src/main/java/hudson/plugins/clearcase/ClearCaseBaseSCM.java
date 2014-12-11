@@ -131,7 +131,7 @@ public class ClearCaseBaseSCM extends AbstractClearCaseSCM {
     /** implementation of abstract method {@link AbstractClearCaseSCM#createCheckOutAction()} */
     @Override
     protected CheckoutAction createCheckoutAction(ClearTool ct, ClearCaseLogger logger, View view,
-            String stgloc)
+            String stgloc,int ccCmdDelay)
     {
         CheckoutAction action;
         if (isUseDynamicView()) {
@@ -140,7 +140,7 @@ public class ClearCaseBaseSCM extends AbstractClearCaseSCM {
                     BASE_DESCRIPTOR.getTimeShift());
         } else {
             action = new SnapshotCheckoutAction(ct, logger, view, stgloc, getMkviewOptionalParam(),
-                    isUseUpdate(), getConfigSpec(), getViewPaths(ct.getWorkspace()));
+                    isUseUpdate(), getConfigSpec(), getViewPaths(ct.getWorkspace()), ccCmdDelay);
         }
         return action;
     }

@@ -47,9 +47,9 @@ public class SnapshotCheckoutAction extends CheckoutAction {
 
 	public SnapshotCheckoutAction(ClearTool cleartool, ClearCaseLogger logger, View view,
             String stgloc, String mkViewOptionalParams, boolean useUpdate, 
-            String configSpec, List<String> loadRules)
+            String configSpec, List<String> loadRules, int ccCmdDelay)
     {
-        super(cleartool, logger, view, stgloc, mkViewOptionalParams, useUpdate);
+        super(cleartool, logger, view, stgloc, mkViewOptionalParams, useUpdate,ccCmdDelay);
         this.configSpec = configSpec;
         this.loadRules = loadRules;
     }
@@ -92,6 +92,12 @@ public class SnapshotCheckoutAction extends CheckoutAction {
         
         if (viewExists) {
             if (useUpdate) {
+                //ending viewserver process to prevent any update action in progress.
+                //useful if a previous update has been killed
+            	logger.log("Ending vue and Sleeping for "+ccCmdDelay + " seconds ...");
+                cleartool.endviewServer(existingView,ccCmdDelay);
+               
+             try{   
                 logger.log("Searching for changes in config spec...");
                 ConfigSpec viewConfigSpec = new ConfigSpec(cleartool.catcs(existingView).trim());
                 if (jobConfSpec.equals(viewConfigSpec)){
@@ -101,9 +107,12 @@ public class SnapshotCheckoutAction extends CheckoutAction {
                 	logger.log("Config spec has changed. Updating view...");
                 	cleartool.setcs(existingView, jobConfSpec.getValue());
                 }
+            }finally{
+            	cleartool.endviewServer(existingView,ccCmdDelay);
+            }
             } else {
-                logger.log("Deleting old view...");
-                cleartool.rmview(existingView);
+                logger.log("Deleting view and Sleeping for "+ccCmdDelay + " seconds ...");
+                cleartool.rmview(existingView,false,ccCmdDelay);                
                 createView = true;
             }
         } else {

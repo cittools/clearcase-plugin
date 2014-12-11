@@ -62,6 +62,10 @@ public class Stream {
         this.components = components;
     }
     
+    public Stream() {
+        
+    }
+    
     /*******************************
      **** METHODS ******************
      *******************************/

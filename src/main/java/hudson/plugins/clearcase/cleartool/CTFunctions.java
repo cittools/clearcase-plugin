@@ -67,7 +67,7 @@ public interface CTFunctions {
      * @param view
      */
     void 
-    rmview(View view, boolean useTag) 
+    rmview(View view, boolean useTag,int ccCmdDelay) 
     throws IOException, InterruptedException, ClearToolError;
 
     /**

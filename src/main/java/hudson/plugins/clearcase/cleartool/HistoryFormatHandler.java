@@ -104,6 +104,7 @@ public class HistoryFormatHandler {
             activity.setUser(matcher.group(3).trim());
             activity.setContribActivitiesStr(matcher.group(4).trim());
             activity.setComment(matcher.group(5).trim());
+            activity.setName(matcher.group(6).trim());
             return activity;
         } else {
             return null;
@@ -135,7 +136,9 @@ public class HistoryFormatHandler {
     public static final String UCM_ACTIVITY_STREAM = "%[stream]p";
     public static final String UCM_ACTIVITY_VIEW = "%[view]p";
     public static final String UCM_ACTIVITY_CONTRIBUTING = "%[contrib_acts]p";
+    public static final String UCM_ACTIVITY_VERSIONS = "%[versions]CQp";
     public static final String UCM_VERSION_ACTIVITY = "%[activity]p";
+    
     // UCM Versions
     public static final String USER_FULLNAME = "%Fu";
     public static final String USER_GROUPNAME = "%Gu";

@@ -43,14 +43,24 @@ public class UcmDynamicCheckoutAction extends CheckoutAction {
 
     private final boolean doNotUpdateConfigSpec;
     private final int timeShift;
+    private final boolean freezeView;
 
     public UcmDynamicCheckoutAction(ClearTool cleartool, ClearCaseLogger logger, View view,
             String stgloc, String mkViewOptionalParams, boolean useUpdate,
             boolean doNotUpdateConfigSpec, int timeShift)
     {
-        super(cleartool, logger, view, stgloc, mkViewOptionalParams, useUpdate);
+        this(cleartool, logger, view, stgloc, mkViewOptionalParams, useUpdate,
+                doNotUpdateConfigSpec, timeShift, true);
+    }
+
+    public UcmDynamicCheckoutAction(ClearTool cleartool, ClearCaseLogger logger, View view,
+            String stgloc, String mkViewOptionalParams, boolean useUpdate,
+            boolean doNotUpdateConfigSpec, int timeShift, boolean freezeView)
+    {
+        super(cleartool, logger, view, stgloc, mkViewOptionalParams, useUpdate,0);
         this.doNotUpdateConfigSpec = doNotUpdateConfigSpec;
         this.timeShift = timeShift;
+        this.freezeView = freezeView;
     }
 
     @Override
@@ -114,17 +124,18 @@ public class UcmDynamicCheckoutAction extends CheckoutAction {
             /* we store the config spec in order to restore it at the end of the build */
             CCParametersAction.addBuildParameter(build, new StringParameterValue(
                     ORIGINAL_CONFIG_SPEC, configSpec.getValue()));
-            
-            /*
-             * We add "-time" rules next to the element with "LATEST" rules. This way, we are sure
-             * that the view contents will not change during the build.
-             */
-            Calendar cal = Calendar.getInstance();
-            cal.add(Calendar.SECOND, timeShift);
-            Date time = cal.getTime();
-            logger.log("Freezing view at " + time + "...");
-            configSpec.addTimeRules(time);
 
+            if (freezeView) {
+                /*
+                 * We add "-time" rules next to the element with "LATEST" rules. This way, we are
+                 * sure that the view contents will not change during the build.
+                 */
+                Calendar cal = Calendar.getInstance();
+                cal.add(Calendar.SECOND, timeShift);
+                Date time = cal.getTime();
+                logger.log("Freezing view at " + time + "...");
+                configSpec.addTimeRules(time);
+            }
             cleartool.setcs(view, configSpec.getValue());
         }
 
