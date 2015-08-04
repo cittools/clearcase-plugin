@@ -805,7 +805,7 @@ public abstract class ClearTool implements CTFunctions {
 
 		List<String> activityNames = new ArrayList<String>();
 		if (result != null) {
-            Matcher matcher = Pattern.compile("(>>|<<) (.+?)( \")").matcher(result);
+            Matcher matcher = Pattern.compile("(>>|<<|<-) (.+?)( \")").matcher(result);
             while (matcher.find()) {
                 String name = matcher.group(2);   
                 if (! (name.startsWith("rebase.") || name.startsWith("deliver.")) ){

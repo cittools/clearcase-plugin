@@ -41,105 +41,116 @@ import java.util.Date;
 
 public class UcmDynamicCheckoutAction extends CheckoutAction {
 
-    private final boolean doNotUpdateConfigSpec;
-    private final int timeShift;
-    private final boolean freezeView;
+	private final boolean doNotUpdateConfigSpec;
+	private final int timeShift;
+	private final boolean freezeView;
 
-    public UcmDynamicCheckoutAction(ClearTool cleartool, ClearCaseLogger logger, View view,
-            String stgloc, String mkViewOptionalParams, boolean useUpdate,
-            boolean doNotUpdateConfigSpec, int timeShift)
-    {
-        this(cleartool, logger, view, stgloc, mkViewOptionalParams, useUpdate,
-                doNotUpdateConfigSpec, timeShift, true);
-    }
+	public UcmDynamicCheckoutAction(ClearTool cleartool, ClearCaseLogger logger, View view,
+			String stgloc, String mkViewOptionalParams, boolean useUpdate,
+			boolean doNotUpdateConfigSpec, int timeShift)
+	{
+		this(cleartool, logger, view, stgloc, mkViewOptionalParams, useUpdate,
+				doNotUpdateConfigSpec, timeShift, true);
+	}
 
-    public UcmDynamicCheckoutAction(ClearTool cleartool, ClearCaseLogger logger, View view,
-            String stgloc, String mkViewOptionalParams, boolean useUpdate,
-            boolean doNotUpdateConfigSpec, int timeShift, boolean freezeView)
-    {
-        super(cleartool, logger, view, stgloc, mkViewOptionalParams, useUpdate,0);
-        this.doNotUpdateConfigSpec = doNotUpdateConfigSpec;
-        this.timeShift = timeShift;
-        this.freezeView = freezeView;
-    }
+	public UcmDynamicCheckoutAction(ClearTool cleartool, ClearCaseLogger logger, View view,
+			String stgloc, String mkViewOptionalParams, boolean useUpdate,
+			boolean doNotUpdateConfigSpec, int timeShift, boolean freezeView)
+	{
+		super(cleartool, logger, view, stgloc, mkViewOptionalParams, useUpdate,0);
+		this.doNotUpdateConfigSpec = doNotUpdateConfigSpec;
+		this.timeShift = timeShift;
+		this.freezeView = freezeView;
+	}
 
-    @Override
-    public boolean checkout(@SuppressWarnings("rawtypes") AbstractBuild build, TaskListener listener)
-            throws IOException, InterruptedException, ClearToolError
-    {
-        boolean viewExists = false, createView = false;
+	@Override
+	public boolean checkout(@SuppressWarnings("rawtypes") AbstractBuild build, TaskListener listener)
+	throws IOException, InterruptedException, ClearToolError
+	{
+		boolean viewExists = false, createView = false;
 
-        if (view.getStream() == null) {
-            throw new ClearToolError("The stream was not specified.");
-        }
+		if (view.getStream() == null) {
+			throw new ClearToolError("The stream was not specified.");
+		}
 
-        View existingView = new View(view.getName());
-        logger.log("Fetching view info...");
-        try {
-            viewExists = cleartool.getViewInfo(existingView);
-        } catch (ClearToolError cte) {
-            /*
-             * the server hosting the view was not reachable we consider that the view already
-             * exists therefore, this view tag cannot be used
-             */
-            throw new ClearToolError("The view tag : " + view + " is already in use"
-                    + " but the view's host cannot be reached," + " please use another view tag.",
-                    cte);
-        }
+		View existingView = new View(view.getName());
+		logger.log("Fetching view info...");
+		try {
+			viewExists = cleartool.getViewInfo(existingView);
+		} catch (ClearToolError cte) {
+			/*
+			 * the server hosting the view was not reachable we consider that the view already
+			 * exists therefore, this view tag cannot be used
+			 */
+			throw new ClearToolError("The view tag : " + view + " is already in use"
+					+ " but the view's host cannot be reached," + " please use another view tag.",
+					cte);
+		}
 
-        if (viewExists) {
-            boolean correctStream = false;
-            try {
-                Stream currentStream = cleartool.getStreamFromView(existingView);
-                correctStream = currentStream.equals(view.getStream());
-                if (!correctStream) {
-                    logger.log("Stream configuration has changed.");
-                }
-            } catch (ClearToolError e) {
-                logger.log("WARNING: The view " + view.getName()
-                        + " is not attached to any stream.");
-            }
-            if (!(useUpdate && correctStream)) {
-                logger.log("Deleting view " + existingView + "...");
-                cleartool.rmview(existingView);
-                createView = true;
-            }
-        } else {
-            createView = true;
-        }
+		if (viewExists) {
+			boolean correctStream = false;
+			try {
+				Stream currentStream = cleartool.getStreamFromView(existingView);
+				correctStream = currentStream.equals(view.getStream());
+				if (!correctStream) {
+					logger.log("Stream configuration has changed.");
+				}
+			} catch (ClearToolError e) {
+				logger.log("WARNING: The view " + view.getName()
+						+ " is not attached to any stream.");
+			}
+			//prod00136760 : throw an error instead of deleting the view if the stream has changed and if the "reuse view" option is checked
+			/*if (!(useUpdate && correctStream)) {
+				logger.log("Deleting view " + existingView + "...");
+				cleartool.rmview(existingView);
+				createView = true;
+			}*/
+			if (useUpdate && !correctStream){
+				throw new ClearToolError("The stream has changed but the \"reuse view\" option is checked so the plugin can't delete this view. " +
+				"Please uncheck this option to delete and recreate the view.");
+			}
+			else if (!useUpdate){
+				logger.log("Deleting view " + existingView + "...");
+				cleartool.rmview(existingView);
+				createView = true;
+			}
+			
+		} else {
+			createView = true;
+		}
 
-        if (createView) {
-            logger.log("Creating dynamic view: " + view + "...");
-            cleartool.mkview(view, stgloc, cleartool.getEnv().expand(mkViewOptionalParams));
-        }
+		if (createView) {
+			logger.log("Creating dynamic view: " + view + "...");
+			cleartool.mkview(view, stgloc, cleartool.getEnv().expand(mkViewOptionalParams));
+		}
 
-        logger.log("Starting view: " + view + "...");
-        cleartool.startView(view);
+		logger.log("Starting view: " + view + "...");
+		cleartool.startView(view);
 
-        if (!doNotUpdateConfigSpec) {
-            logger.log("Synchronizing view with stream...");
-            cleartool.update(view);
+		if (!doNotUpdateConfigSpec) {
+			logger.log("Synchronizing view with stream...");
+			cleartool.update(view);
 
-            ConfigSpec configSpec = new ConfigSpec(cleartool.catcs(view));
-            /* we store the config spec in order to restore it at the end of the build */
-            CCParametersAction.addBuildParameter(build, new StringParameterValue(
-                    ORIGINAL_CONFIG_SPEC, configSpec.getValue()));
+			ConfigSpec configSpec = new ConfigSpec(cleartool.catcs(view));
+			/* we store the config spec in order to restore it at the end of the build */
+			CCParametersAction.addBuildParameter(build, new StringParameterValue(
+					ORIGINAL_CONFIG_SPEC, configSpec.getValue()));
 
-            if (freezeView) {
-                /*
-                 * We add "-time" rules next to the element with "LATEST" rules. This way, we are
-                 * sure that the view contents will not change during the build.
-                 */
-                Calendar cal = Calendar.getInstance();
-                cal.add(Calendar.SECOND, timeShift);
-                Date time = cal.getTime();
-                logger.log("Freezing view at " + time + "...");
-                configSpec.addTimeRules(time);
-            }
-            cleartool.setcs(view, configSpec.getValue());
-        }
+			if (freezeView) {
+				/*
+				 * We add "-time" rules next to the element with "LATEST" rules. This way, we are
+				 * sure that the view contents will not change during the build.
+				 */
+				Calendar cal = Calendar.getInstance();
+				cal.add(Calendar.SECOND, timeShift);
+				Date time = cal.getTime();
+				logger.log("Freezing view at " + time + "...");
+				configSpec.addTimeRules(time);
+			}
+			cleartool.setcs(view, configSpec.getValue());
+		}
 
-        return true;
-    }
+		return true;
+	}
 
 }

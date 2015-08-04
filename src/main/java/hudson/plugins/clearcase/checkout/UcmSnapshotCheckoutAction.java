@@ -40,113 +40,119 @@ import java.util.List;
 
 public class UcmSnapshotCheckoutAction extends CheckoutAction {
 
-    private final List<String> loadRules;
+	private final List<String> loadRules;
 
-    public UcmSnapshotCheckoutAction(ClearTool cleartool, ClearCaseLogger logger, View view,
-            String stgloc, String mkViewOptionalParams, boolean useUpdate, List<String> loadRules, int ccCmdDelay)
-    {
-        super(cleartool, logger, view, stgloc, mkViewOptionalParams, useUpdate, ccCmdDelay);
-        this.loadRules = loadRules;
-    }
+	public UcmSnapshotCheckoutAction(ClearTool cleartool, ClearCaseLogger logger, View view,
+			String stgloc, String mkViewOptionalParams, boolean useUpdate, List<String> loadRules, int ccCmdDelay)
+	{
+		super(cleartool, logger, view, stgloc, mkViewOptionalParams, useUpdate, ccCmdDelay);
+		this.loadRules = loadRules;
+	}
 
-    @Override
-    public boolean checkout(@SuppressWarnings("rawtypes") AbstractBuild build, TaskListener listener)
-            throws IOException, InterruptedException, ClearToolError
-    {
-        boolean viewRegistered, viewFolderExists, viewExists, createView;
-        FilePath workspace = build.getWorkspace();
-        String oldViewUuid = "null";
-        createView = false;
+	@Override
+	public boolean checkout(@SuppressWarnings("rawtypes") AbstractBuild build, TaskListener listener)
+	throws IOException, InterruptedException, ClearToolError
+	{
+		boolean viewRegistered, viewFolderExists, viewExists, createView;
+		FilePath workspace = build.getWorkspace();
+		String oldViewUuid = "null";
+		createView = false;
 
-        if (view.getStream() == null) {
-            throw new ClearToolError("The stream was not specified.");
-        }
+		if (view.getStream() == null) {
+			throw new ClearToolError("The stream was not specified.");
+		}
 
-        View existingView = new View(view.getName());
-        logger.log("Fetching view info...");
-        try {
-            viewRegistered = cleartool.getViewInfo(existingView);
-        } catch (ClearToolError cte) {
-            /*
-             * the server hosting the view was not reachable we consider that the view is registered
-             */
-            viewRegistered = true;
-        }
-        viewFolderExists = workspace.child(existingView.getName()).exists();
-        if (viewFolderExists) {
-            try {
-                oldViewUuid = cleartool
-                        .getSnapshotViewUuid(workspace.child(existingView.getName()));
-            } catch (Exception e) {
-                /*
-                 * either the view folder in the workspace does not exists, either the view.dat file
-                 * could not be found in the view folder either the view.dat file is corrupted and
-                 * does not match the expected pattern
-                 */
-                logger.log(e.toString());
-            }
-        }
-        viewExists = viewRegistered && oldViewUuid.equals(existingView.getUuid());
+		View existingView = new View(view.getName());
+		logger.log("Fetching view info...");
+		try {
+			viewRegistered = cleartool.getViewInfo(existingView);
+		} catch (ClearToolError cte) {
+			/*
+			 * the server hosting the view was not reachable we consider that the view is registered
+			 */
+			viewRegistered = true;
+		}
+		viewFolderExists = workspace.child(existingView.getName()).exists();
+		if (viewFolderExists) {
+			try {
+				oldViewUuid = cleartool
+				.getSnapshotViewUuid(workspace.child(existingView.getName()));
+			} catch (Exception e) {
+				/*
+				 * either the view folder in the workspace does not exists, either the view.dat file
+				 * could not be found in the view folder either the view.dat file is corrupted and
+				 * does not match the expected pattern
+				 */
+				logger.log(e.toString());
+			}
+		}
+		viewExists = viewRegistered && oldViewUuid.equals(existingView.getUuid());
 
-        if (viewExists) {
-            boolean correctStream = false;
-            try {
-                Stream currentStream = cleartool.getStreamFromView(existingView);
-                correctStream = currentStream.equals(view.getStream());
-                if (!correctStream) {
-                    logger.log("Stream configuration has changed.");
-                }
-            } catch (ClearToolError e) {
-                logger.log("WARNING: The view " + view.getName()
-                        + " is not attached to any stream.");
-            }
-            if (useUpdate && correctStream) {
-                //ending viewserver process to prevent any update action in progress.
-                //useful if a previous update has been killed    
-            	logger.log("Ending vue and Sleeping for "+ccCmdDelay + " seconds ... ");
-                cleartool.endviewServer(existingView,ccCmdDelay);
-             try{ 
-                
-                logger.log("Searching for changes in load rules...");
-                ConfigSpec configSpec = new ConfigSpec(cleartool.catcs(existingView));            
-                if (configSpec.loadRulesDiffer(this.loadRules)) {
-                    logger.log("Load rules have changed. Updating view...");
-                    configSpec.replaceLoadRules(this.loadRules, Tools.isWindows(workspace));
-                    cleartool.setcs(existingView, configSpec.getValue());
-                } else {
-                    logger.log("No changes in load rules. Updating view...");
-                    cleartool.update(existingView);
-                }
-             }finally{
-            	 cleartool.endviewServer(existingView,ccCmdDelay);
-             }
-            } else {
-                logger.log("Deleting view and Sleeping for "+ccCmdDelay + " seconds ...");
-                cleartool.rmview(existingView,false, ccCmdDelay);
-                createView = true;
-            }
-        } else {
-            if (viewRegistered) {
-                throw new ClearToolError(String.format("The view tag %s is already registered. "
-                        + "Choose another one.", view.getName()));
-            }
-            if (viewFolderExists) {
-                workspace.child(view.getName()).deleteRecursive();
-                logger.log(String.format("There was a folder with a name "
-                        + "conflicting with the view name %s, it was deleted.", view.getName()));
-            }
-            createView = true;
-        }
-        if (createView) {
-            logger.log(String.format("Creating view: %s...", view.getName()));
-            cleartool.mkview(view, stgloc, cleartool.getEnv().expand(mkViewOptionalParams));
-            ConfigSpec configSpec = new ConfigSpec(cleartool.catcs(view));
-            configSpec.replaceLoadRules(this.loadRules, Tools.isWindows(workspace));
-            logger.log(String.format("Loading files from load rules..."));
-            cleartool.setcs(view, configSpec.getValue());
-        }
+		if (viewExists) {
+			boolean correctStream = false;
+			try {
+				Stream currentStream = cleartool.getStreamFromView(existingView);
+				correctStream = currentStream.equals(view.getStream());
+				if (!correctStream) {
+					logger.log("Stream configuration has changed.");
+				}
+			} catch (ClearToolError e) {
+				logger.log("WARNING: The view " + view.getName()
+						+ " is not attached to any stream.");
+			}
+			if (useUpdate && correctStream) {
+				//ending viewserver process to prevent any update action in progress.
+				//useful if a previous update has been killed    
+				logger.log("Ending vue and Sleeping for "+ccCmdDelay + " seconds ... ");
+				cleartool.endviewServer(existingView,ccCmdDelay);
+				try{ 
 
-        return true;
-    }
+					logger.log("Searching for changes in load rules...");
+					ConfigSpec configSpec = new ConfigSpec(cleartool.catcs(existingView));            
+					if (configSpec.loadRulesDiffer(this.loadRules)) {
+						logger.log("Load rules have changed. Updating view...");
+						configSpec.replaceLoadRules(this.loadRules, Tools.isWindows(workspace));
+						cleartool.setcs(existingView, configSpec.getValue());
+					} else {
+						logger.log("No changes in load rules. Updating view...");
+						cleartool.update(existingView);
+					}
+				}finally{
+					cleartool.endviewServer(existingView,ccCmdDelay);
+				}
+			}
+			//prod00136760 : throw an error instead of deleting the view if the stream has changed and if the "reuse view" option is checked
+			else if(useUpdate && !correctStream){
+				throw new ClearToolError("The stream has changed but the \"reuse view\" option is checked so the plugin can't delete this view. " +
+						"Please uncheck this option to delete and recreate the view.");
+			}
+			else {
+				logger.log("Deleting view and Sleeping for "+ccCmdDelay + " seconds ...");
+				cleartool.rmview(existingView,false, ccCmdDelay);
+				createView = true;
+			}
+		} else {
+			if (viewRegistered) {
+				throw new ClearToolError(String.format("The view tag %s is already registered. "
+						+ "Choose another one.", view.getName()));
+			}
+			if (viewFolderExists) {
+				workspace.child(view.getName()).deleteRecursive();
+				logger.log(String.format("There was a folder with a name "
+						+ "conflicting with the view name %s, it was deleted.", view.getName()));
+			}
+			createView = true;
+		}
+		if (createView) {
+			logger.log(String.format("Creating view: %s...", view.getName()));
+			cleartool.mkview(view, stgloc, cleartool.getEnv().expand(mkViewOptionalParams));
+			ConfigSpec configSpec = new ConfigSpec(cleartool.catcs(view));
+			configSpec.replaceLoadRules(this.loadRules, Tools.isWindows(workspace));
+			logger.log(String.format("Loading files from load rules..."));
+			cleartool.setcs(view, configSpec.getValue());
+		}
+
+		return true;
+	}
 
 }
